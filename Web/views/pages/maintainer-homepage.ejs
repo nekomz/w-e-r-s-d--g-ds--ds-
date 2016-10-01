@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Homepage - <%= serverData.name %> Maintainer Console</title>
+	<% include ../partials/head %>
+	<script src="/js/form-change-listener.js"></script>
+
+	<script>
+	function updatePreview(html) {
+		console.log(html);
+		document.getElementById('message-preview').innerHTML = html;
+	}
+	</script>
+</head>
+<body onload="loadBackground();saveFormState();updatePreview(document.getElementById('message-html').value);">
+	<% include ../partials/dashboard-header %>
+		
+	<section class="section is-white">
+		<div class="container">
+			<div class="columns">
+				<div class="column is-one-quarter">
+					<% include ../partials/maintainer-menu %>
+				</div>
+				<div class="column">
+					<h1 class="title">
+						Homepage Message
+					</h1>
+					<div class="container">
+						<article class="message is-primary">
+							<div class="message-body">
+								<div class="content">
+									You can set a <strong>short message</strong> to be displayed in the fullscreen banner on the <a href="/">homepage</a>. This is useful for big announcements or server maintenance warnings. Make sure to use the appropriate <a href="http://bulma.io/documentation/elements/title/">Bulma styling</a>.
+								</div>
+							</div>
+						</article>
+					</div>
+					<br>
+					<div class="container">
+						<form id="form" action="/uc-submit?svrid=maintainer&path=<%= currentPage %>" method="post">
+							<div class="columns">
+								<div class="column is-half">
+									<h4 class="subtitle is-4">
+										HTML Content
+									</h4>
+									<p class="control">
+										<textarea id="message-html" name="homepage_message_html" class="textarea" placeholder="HTML for homepage message" onchange="updatePreview(this.value);" onkeyup="updatePreview(this.value);"><%- config.homepage_message_html %></textarea>
+									</p>
+								</div>
+								<div class="column is-half">
+									<h4 class="subtitle is-4">
+										Preview
+									</h4>
+									<div class="box hero is-primary is-bold">
+										<div class="hero-body has-text-centered">
+											<h3 id="message-preview" class="title is-5"></h3>
+										</div>
+									</div>
+								</div>
+							</div>
+							<% var formButtonsUnsaved = false; %>
+							<% include ../partials/form-buttons %>
+							<div id="form-buttons" style="display:none;background-color:#f5f7fa;position: fixed;padding: 20px;left: 50%;transform: translate(-50%, 0%);bottom: 0px;z-index: 100;width: 100%;">
+								<div class="container">
+									<% var formButtonsUnsaved = true; %>
+									<% include ../partials/form-buttons %>
+								</div>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<% include ../partials/footer %>
+</body>
+</html>

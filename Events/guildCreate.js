@@ -1,7 +1,10 @@
+const auth = require("./../Configuration/auth.json");
 const getNewServerData = require("./../Modules/NewServer.js");
+const postData = require("./../Modules/PostData.js");
 
 // Join new server
-module.exports = (bot, db, winston, svr) => {
+module.exports = (bot, db, config, winston, svr) => {
+	postData(winston, auth, bot.guilds.size, bot.user.id);
 	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(err || !serverDocument) {
 			winston.info("Joined server '" + svr.name + "'", {svrid: svr.id});

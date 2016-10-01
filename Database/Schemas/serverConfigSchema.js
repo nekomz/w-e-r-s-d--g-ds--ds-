@@ -7,7 +7,6 @@ module.exports = {
 		_id: {type: String, required: true},
 		level: {type: Number, default: 1, enum: [1, 2, 3]}
 	})],
-	auto_add_admins: {type: Boolean, default: true},
 	blocked: [String],
 	command_cooldown: {type: Number, default: 0, min: 0, max: 300000},
 	command_fetch_properties: {
@@ -49,23 +48,24 @@ module.exports = {
 		filters: {
 			spam_filter: {
 				isEnabled: {type: Boolean, default: false},
-				enabled_channel_ids: [String],
+				disabled_channel_ids: [String],
 				message_sensitivity: {type: Number, default: 5, enum: [3, 5, 10]},
-				action: {type: String, default: "mute", enum: ["block", "mute", "kick", "ban"]},
+				action: {type: String, default: "mute", enum: ["none", "block", "mute", "kick", "ban"]},
 				delete_messages: {type: Boolean, default: true},
 				violator_role_id: String
 			},
 			nsfw_filter: {
 				isEnabled: {type: Boolean, default: true},
-				enabled_channel_ids: [String],
-				action: {type: String, default: "block", enum: ["block", "mute", "kick", "ban"]},
+				disabled_channel_ids: [String],
+				action: {type: String, default: "block", enum: ["none", "block", "mute", "kick", "ban"]},
 				delete_message: {type: Boolean, default: true},
 				violator_role_id: String
 			},
 			custom_filter: {
+				isEnabled: {type: Boolean, default: false},
 				keywords: [String],
-				enabled_channel_ids: [String],
-				action: {type: String, default: "mute", enum: ["block", "mute", "kick", "ban"]},
+				disabled_channel_ids: [String],
+				action: {type: String, default: "mute", enum: ["none", "block", "mute", "kick", "ban"]},
 				delete_message: {type: Boolean, default: true},
 				violator_role_id: String
 			}
@@ -156,13 +156,6 @@ module.exports = {
 				isEnabled: {type: Boolean, default: false},
 				channel_id: String,
 				enabled_channel_ids: [String]
-			},
-			twitch_stream_message: {
-				isEnabled: {type: Boolean, default: false},
-				channel_id: String,
-				discord_enabled: {type: Boolean, default: false},
-				enabled_user_ids: [String],
-				twitch_usernames: [String]
 			}
 		},
 		new_member_roles: [String],
@@ -174,28 +167,29 @@ module.exports = {
 	music_data: {
 		addingQueueIsAdminOnly: {type: Boolean, default: false},
 		removingQueueIsAdminOnly: {type: Boolean, default: false},
-		addingPlaylistIsAdminOnly: {type: Boolean, default: false},
-		removingPlaylistIsAdminOnly: {type: Boolean, default: false},
 		playlists: [new mongoose.Schema({
 			_id: {type: String, required: true},
 			item_urls: [String]
-		})]
+		})],
+		channel_id: String,
+		current_playlist: String
 	},
 	name_display: {
 		use_nick: {type: Boolean, default: true},
 		show_discriminator: {type: Boolean, default: false}
 	},
+	points_lottery: {type: Boolean, default: false},
 	public_data: {
 		isShown: {type: Boolean, default: true},
 		server_listing: {
 			isEnabled: {type: Boolean, default: false},
 			category: {type: String, default: "Other", enum: ["Gaming", "Tech", "Programming", "Community", "Bots", "Other"]},
-			description: String,
+			description: {type: String, maxlength: 3000},
 			invite_link: String
 		}
 	},
 	ranks_list: [new mongoose.Schema({
-		_id: {type: String, required: true},
+		_id: {type: String, required: true, maxlength: 200},
 		max_score: {type: Number, min: 1, required: true},
 		role_id: String
 	})],
@@ -211,6 +205,12 @@ module.exports = {
 			enabled_channel_ids: [String],
 			last_article_title: String
 		}
+	})],
+	streamers_data: [new mongoose.Schema({
+		_id: {type: String, required: true},
+		type: {type: String, required: true, enum: ["twitch", "ytg"]},
+		channel_id: String,
+		live_state: {type: Boolean, default: false}
 	})],
 	tag_reaction: {
 		isEnabled: {type: Boolean, default: false},

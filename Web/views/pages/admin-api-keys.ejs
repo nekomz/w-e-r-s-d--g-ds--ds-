@@ -6,7 +6,7 @@
 	<script src="/js/form-change-listener.js"></script>
 </head>
 <body onload="loadBackground();saveFormState();">
-	<% include ../partials/admin-header %>
+	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
@@ -39,7 +39,14 @@
 								<span class="help">Used for <code>image</code>. Create a CSE and get its ID <a href="https://cse.google.com/cse/create/new">here</a>.</span>
 							</p>
 							<br>
+							<% var formButtonsUnsaved = false; %>
 							<% include ../partials/form-buttons %>
+							<div id="form-buttons" style="display:none;background-color:#f5f7fa;position: fixed;padding: 20px;left: 50%;transform: translate(-50%, 0%);bottom: 0px;z-index: 100;width: 100%;">
+								<div class="container">
+									<% var formButtonsUnsaved = true; %>
+									<% include ../partials/form-buttons %>
+								</div>
+							</div>
 						</form>
 					</div>
 				</div>

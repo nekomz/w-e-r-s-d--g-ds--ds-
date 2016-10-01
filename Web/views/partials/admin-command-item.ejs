@@ -1,13 +1,13 @@
 <p class="control">
 	<label class="checkbox">
-	<input name="<%= commandData.name %>-isEnabled" type="checkbox" <%= commandData.isEnabled ? "checked" : "" %>>
+	<input name="<%= commandData.name %>-isEnabled" type="checkbox" onclick="$('.<%= commandData.name %>-options').toggleClass('is-hidden');" <%= commandData.isEnabled ? "checked" : "" %>>
 		<strong><%= commandData.name %></strong> <%= commandData.description %>
 	</label>
-	<% if(commandData.isEnabled) { %>
+	<span class="<%= commandData.name %>-options <%= commandData.isEnabled ? '' : 'is-hidden' %>">
 		<span class="select is-small">
-			<select name="<%= commandData.name %>-isAdminOnly" value="<%= commandData.isAdminOnly ? "true" : "false" %>">
-				<option value="false">@everyone</option>
-				<option value="true">Admin-only</option>
+			<select name="<%= commandData.name %>-isAdminOnly">
+				<option value="false"<%= commandData.isAdminOnly ? "" : " selected" %>>@everyone</option>
+				<option value="true"<%= commandData.isAdminOnly ? " selected" : "" %>>Admin-only</option>
 			</select>
 		</span>
 		<br>
@@ -19,5 +19,5 @@
 			</label>
 			<br>
 		<% } %>
-	<% } %>
+	</span>
 </p>

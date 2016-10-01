@@ -23,7 +23,3 @@ module.exports = (serverDocument, query, safe, num, callback) => {
         }
     });
 };
-
-String.prototype.replaceAll = (target, replacement) => {
-	return this.split(target).join(replacement);
-};

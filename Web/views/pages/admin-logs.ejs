@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title><%= serverData.name %> Logs - AwesomeBot Admin Console</title>
+	<% include ../partials/head %>
+
+	<script>
+	function endSession(name) {
+		$.ajax({
+			type: "POST",
+			url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+			data: {
+				"end": name
+			},
+			success: function() {
+				window.location.reload();
+			}
+		});
+	}
+	</script>
+</head>
+<body onload="loadBackground();">
+	<% include ../partials/dashboard-header %>
+		
+	<section class="section is-white">
+		<div class="container">
+			<div class="columns">
+				<div class="column is-one-quarter">
+					<% include ../partials/admin-menu %>
+				</div>
+				<div class="column">
+					<h1 class="title">
+						Bot Logs
+					</h1>
+					<div class="container">
+						<article class="message is-primary">
+							<div class="message-body">
+								<div class="content">
+									AwesomeBot records <strong>everything</strong> that it does on your server. This page allows you to view the <strong>past 500 log entries</strong> in the past two days, in descending order. 
+								</div>
+							</div>
+						</article>
+					</div>
+					<br>
+					<div class="container">
+						<% for(var i=0; i<logData.length; i++) { %>
+							<div class="card is-fullwidth">
+								<header class="card-header">
+									<p class="card-header-title">
+										#<%= logData[i].chid %>, @<%= logData[i].usrid %> at <%= logData[i].timestamp %>
+									</p>
+									<a class="card-header-icon">
+										<i class="fa fa-<%= logData[i].level %>"></i>
+									</a>
+								</header>
+								<div class="card-content">
+									<%= logData[i].message %>
+								</div>
+							</div>
+							<br>
+						<% } %>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<% include ../partials/footer %>
+</body>
+</html>

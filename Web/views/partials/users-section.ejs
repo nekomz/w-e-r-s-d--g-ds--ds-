@@ -1,66 +1,90 @@
-<script src="/js/bulma.js"></script>
+<script>
+function searchUsers(query) {
+	window.location.href = "/activity/users?q=" + encodeURI(query.replaceAll("#", "----"));
+}
+
+document.getElementById("search-button").href = "javascript:searchUsers(document.getElementById('search-input').value);";
+document.getElementById("search-input").onkeydown = function() {
+	if(event.keyCode==13) {
+		searchUsers(this.value);
+	}
+};
+mediaStyle(mq);
+$.getJSON("/userlist", function(data) {
+	searchInputAutocomplete = new autoComplete({
+	    selector: "#search-input",
+	    minChars: 2,
+	    source: function(q, res) {
+	    	q = q.toLowerCase();
+	       	res(data.filter(function(a) {
+	       		return a.toLowerCase().indexOf(q)>-1;
+	       	}));
+	    }
+	});
+});
+</script>
 
 <br><br>
 <div class="container">
 	<nav class="columns">
 		<div class="column is-8 is-offset-2">
-			<% if(activeSearchQuery && userProfile) { %>
+			<% if(activeSearchQuery && data.userProfile) { %>
 				<div class="box">
 					<article class="media">
 						<div class="media-left">
-			    			<img class="image" style="width: 256px;" src="<%= userProfile.avatar %>" alt="<%= userProfile.id %>">
+			    			<img class="image" style="width: 256px;" src="<%= data.userProfile.avatar %>" alt="<%= data.userProfile.id %>">
 		    			</div>
 			    		<div class="media-content">
 							<h2 class="title">
-								<%= userProfile.username %><small class="subtitle is-4">#<%= userProfile.discriminator %></small> 
-								<span class="tag is-medium <%= userProfile.statusColor %>"><%= userProfile.status.charAt(0).toUpperCase() + userProfile.status.slice(1) %></span>
+								<%= data.userProfile.username %><small class="subtitle is-4">#<%= data.userProfile.discriminator %></small> 
+								<span class="tag is-medium <%= data.userProfile.statusColor %>"><%= data.userProfile.status.charAt(0).toUpperCase() + data.userProfile.status.slice(1) %></span>
 							</h2>
 							<h5 class="subtitle">
-								Joined Discord <span title="<%= userProfile.rawAccountAge %>"><%= userProfile.roundedAccountAge %> days ago</span>
+								Joined Discord <span title="<%= data.userProfile.rawAccountAge %>"><%= data.userProfile.roundedAccountAge %> days ago</span>
 							</h5>
 							<div class="content">
 								<h4 class="title is-3">
-									<% if(userProfile.game) { %>
+									<% if(data.userProfile.game) { %>
 										<span class="icon is-medium">
 											<i class="fa fa-gamepad"></i>
 										</span>
-										<span>Playing <strong><%= userProfile.game %></strong></span>
+										<span>Playing <strong><%= data.userProfile.game %></strong></span>
 										<br>
 									<% } %>
-									<% if(userProfile.status!="online" && userProfile.rawLastSeen && userProfile.lastSeen) { %>
+									<% if(data.userProfile.status!="online" && data.userProfile.rawLastSeen && data.userProfile.lastSeen) { %>
 										<span class="icon is-medium">
 											<i class="fa fa-clock-o"></i>
 										</span>
-										<span>Seen <span title="<%= userProfile.lastSeen %>"><strong><%= userProfile.rawLastSeen %></strong>ago</span></span>
+										<span>Seen <span title="<%= data.userProfile.lastSeen %>"><strong><%= data.userProfile.rawLastSeen %></strong>ago</span></span>
 										<br>
 									<% } %>
 									<span class="icon is-medium">
 										<i class="fa fa-user"></i>
 									</span>
-									<span>ID <strong><%= userProfile.id %></strong></span>
+									<span>ID <strong><%= data.userProfile.id %></strong></span>
 									<br>
-									<% if(userProfile.mutualServers) { %>
+									<% if(data.userProfile.mutualServers) { %>
 										<span class="modal-button" data-target="#mutual-servers-modal">
 									<% } %>
 									<span class="icon is-medium">
 										<i class="fa fa-list-ul"></i>
 									</span>
-									<span><strong><%= userProfile.mutualServerCount %></strong> servers with AwesomeBot</span>
-									<% if(userProfile.mutualServers) { %>
+									<span><strong><%= data.userProfile.mutualServerCount %></strong> servers with AwesomeBot</span>
+									<% if(data.userProfile.mutualServers) { %>
 										</span>
 										<div id="mutual-servers-modal" class="modal">
 											<div class="modal-background"></div>
 											<div class="modal-container">
 												<div class="modal-content">
 													<div class="box">
-														<% for(var i=0; i<userProfile.mutualServers.length; i++) { %>
+														<% for(var i=0; i<data.userProfile.mutualServers.length; i++) { %>
 															<article class="media">
 																<div class="media-left">
-																	<img class="image is-64x64" src="<%= userProfile.mutualServers[i].icon %>" alt="<%= userProfile.mutualServers[i].id %>">
+																	<img class="image is-64x64" src="<%= data.userProfile.mutualServers[i].icon %>" alt="<%= data.userProfile.mutualServers[i].id %>">
 																</div>
 																<div class="media-content">
-																	<p class="title is-3"><%= userProfile.mutualServers[i].name %></p>
-																	<p class="subtitle is-5">Owned by @<%= userProfile.mutualServers[i].owner %></p>
+																	<p class="title is-3"><%= data.userProfile.mutualServers[i].name %></p>
+																	<p class="subtitle is-5">Owned by @<%= data.userProfile.mutualServers[i].owner %></p>
 																</div>
 															</article>
 														<% } %>
@@ -73,22 +97,22 @@
 								</h4>
 
 								<h4 class="title is-3">
-									<% if(userProfile.isAfk) { %>
-										<% if(userProfile.afkMessage) { %>
+									<% if(data.userProfile.isAfk) { %>
+										<% if(data.userProfile.afkMessage) { %>
 											<span class="modal-button" data-target="#afk-message-modal">
 										<% } %>
 										<span class="icon is-medium">
 											<i class="fa fa-keyboard-o"></i>
 										</span>
 										<span>Currently <strong>AFK</strong></span>
-										<% if(userProfile.afkMessage) { %>
+										<% if(data.userProfile.afkMessage) { %>
 											</span>
 											<div id="afk-message-modal" class="modal">
 												<div class="modal-background"></div>
 												<div class="modal-container">
 													<div class="modal-content">
 														<div class="box">
-															<p class="title is-3"><%= userProfile.afkMessage %></p>
+															<p class="title is-3"><%= data.userProfile.afkMessage %></p>
 														</div>
 													</div>
 												</div>
@@ -100,24 +124,24 @@
 									<span class="icon is-medium">
 										<i class="fa fa-star"></i>
 									</span>
-									<span>Has <strong><%= userProfile.points %></strong> points</span>
+									<span>Has <strong><%= data.userProfile.points %></strong> points</span>
 									<br>
-									<% if(userProfile.pastNames && userProfile.pastNames.length>0) { %>
+									<% if(data.userProfile.pastNames && data.userProfile.pastNames.length>0) { %>
 										<span class="modal-button" data-target="#past-names-modal">
 									<% } %>
 									<span class="icon is-medium">
 										<i class="fa fa-font"></i>
 									</span>
-									<span><strong><%= userProfile.pastNameCount %></strong> past names</span>
-									<% if(userProfile.pastNames && userProfile.pastNames.length>0) { %>
+									<span><strong><%= data.userProfile.pastNameCount %></strong> past names</span>
+									<% if(data.userProfile.pastNames && data.userProfile.pastNames.length>0) { %>
 										</span>
 										<div id="past-names-modal" class="modal">
 											<div class="modal-background"></div>
 											<div class="modal-container">
 												<div class="modal-content">
 													<div class="box">
-														<% for(var i=0; i<userProfile.pastNames.length; i++) { %>
-															<p class="title is-3"><%= userProfile.pastNames[i] %></p>
+														<% for(var i=0; i<data.userProfile.pastNames.length; i++) { %>
+															<p class="title is-3"><%= data.userProfile.pastNames[i] %></p>
 														<% } %>
 													</div>
 												</div>
@@ -127,9 +151,9 @@
 									<% } %>
 								</h4>
 
-								<% if(userProfile.profileFields) { %>
-									<% for(var key in userProfile.profileFields) { %>
-										<span><%= key.charAt(0).toUpperCase() + key.slice(1) %>: <%= userProfile.profileFields[key] %></span>
+								<% if(data.userProfile.profileFields) { %>
+									<% for(var key in data.userProfile.profileFields) { %>
+										<span><%= key.charAt(0).toUpperCase() + key.slice(1) %>: <%= data.userProfile.profileFields[key] %></span>
 										<br>
 									<% } %>
 								<% } %>
@@ -138,7 +162,7 @@
 					</article>
 				</div>
 				<script>
-				document.getElementById("frame").style.backgroundImage = "url('<%= userProfile.backgroundImage %>')";document.getElementById("frame").style.paddingBottom = "200px"
+				document.getElementById("frame").style.backgroundImage = "url('<%= data.userProfile.backgroundImage %>')";document.getElementById("frame").style.paddingBottom = "200px"
 				</script>
 			<% } else if(!activeSearchQuery) { %>
 				<script>
@@ -151,31 +175,31 @@
 								<span class="icon is-medium">
 									<i class="fa fa-star"></i>
 								</span>
-								<span><strong><%= totalPoints %></strong> points total</span>
+								<span><strong><%= data.totalPoints %></strong> points total</span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-user"></i>
 								</span>
-								<span><strong><%= publicProfilesCount %></strong> public user profiles</span>
+								<span><strong><%= data.publicProfilesCount %></strong> public user profiles</span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-bell"></i>
 								</span>
-								<span><strong><%= reminderCount %></strong> reminders set</span>
+								<span><strong><%= data.reminderCount %></strong> reminders set</span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-info-circle"></i>
 								</span>
-								<span><strong><%= profileFieldCount %></strong> profile fields</span>
+								<span><strong><%= data.profileFieldCount %></strong> profile fields</span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-keyboard-o"></i>
 								</span>
-								<span><strong><%= afkUserCount %></strong> users AFK right now</span>
+								<span><strong><%= data.afkUserCount %></strong> users AFK right now</span>
 							</h2>
 						</div>
 				    	<div class="media-right">
@@ -196,7 +220,7 @@
 					</div>
 					<div class="message-body">
 						There aren't any users that matched your search. 
-						<a class="button is-small" href="javascript:loadFrameContent('/users?q=');">
+						<a class="button is-small" href="javascript:window.location.href = '/users?q=';">
 							<span class="icon is-small">
 								<i class="fa fa-chevron-left"></i>
 							</span>

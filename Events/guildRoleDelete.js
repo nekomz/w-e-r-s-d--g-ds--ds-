@@ -1,5 +1,5 @@
 // Server role deleted
-module.exports = (bot, db, winston, svr, role) => {
+module.exports = (bot, db, config, winston, svr, role) => {
 	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(!err && serverDocument) {
 			// Remove role from config if necessary
@@ -13,15 +13,15 @@ module.exports = (bot, db, winston, svr, role) => {
 				updated = true;
 				serverDocument.config.custom_roles.splice(serverDocument.config.custom_roles.indexOf(role.id), 1);
 			}
-			for(var filter in serverDocument.config.moderation.filters) {
+			for(var filter in serverDocument.toObject().config.moderation.filters) {
 				if(serverDocument.config.moderation.filters[filter].violator_role_id==role.id) {
 					updated = true;
 					serverDocument.config.moderation.filters[filter].violator_role_id = undefined;
 				}	
 			}
-			if(serverDocument.config.new_member_roles.indexOf(role.id)>-1) {
+			if(serverDocument.config.moderation.new_member_roles.indexOf(role.id)>-1) {
 				updated = true;
-				serverDocument.config.new_member_roles.splice(serverDocument.config.new_member_roles.indexOf(role.id), 1);
+				serverDocument.config.moderation.new_member_roles.splice(serverDocument.config.moderation.new_member_roles.indexOf(role.id), 1);
 			}
 			for(var i=0; i<serverDocument.config.ranks_list.length; i++) {
 				if(serverDocument.config.ranks_list[i].role_id==role.id) {
@@ -37,7 +37,7 @@ module.exports = (bot, db, winston, svr, role) => {
 				});
 			}
 		} else {
-			winston.error("Failed to find server data for serverRoleUpdated", {svrid: svr.id}, err);
+			winston.error("Failed to find server data for serverRoleDeleted", {svrid: svr.id}, err);
 		}
 	});
 };

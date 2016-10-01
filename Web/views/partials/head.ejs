@@ -19,26 +19,6 @@ function loadBackground() {
     document.getElementById("header").style.backgroundImage = "url('/img/header-bg-" + (Math.floor(Math.random() * (53)) + 1) + ".jpg')";
 }
 
-function loadFrameContent(url, callback) {
-	$.ajax({
-		url: url,
-		type: "GET",
-		success: function(data){
-			$("#frame").html(data);
-			if(callback) {
-				callback();
-			}
-		},
-		error: function(err) {
-			if(callback) {
-				callback(err);
-			} else {
-				window.location.replace("/error");
-			}
-		}
-	});
-}
-
 function setUserAutocomplete(svrid) {
 	$.getJSON("/userlist" + (svrid ? ("?svrid=" + svrid) : ""), function(data) {
 		new autoComplete({
@@ -51,6 +31,6 @@ function setUserAutocomplete(svrid) {
 		       	}));
 		    }
 		});
-	});		
+	});
 }
 </script>

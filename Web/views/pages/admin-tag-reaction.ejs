@@ -31,7 +31,7 @@
 	</script>
 </head>
 <body onload="loadBackground();saveFormState();">
-	<% include ../partials/admin-header %>
+	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
@@ -53,31 +53,29 @@
 					<br>
 					<div class="container">
 						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
-							<div class="content">
-								<p class="control">
-									<label class="checkbox">
-									<input name="isEnabled" type="checkbox" <%= configData.tag_reaction.isEnabled ? "checked" : "" %>>
-										Repond when tagged in chat
-									</label>
-								</p>
-								<ul>
-									<% for(var i=0; i<configData.tag_reaction.messages; i++) { %>
-										<li>
-											<%= configData.tag_reaction.messages[i].replace("@user", "<strong>@user</strong>") %>
-											<button class="button is-small is-danger" name="tag_reaction-<%= i %>-removed">
-												<span>Remove</span>
-												<span class="icon is-small">
-													<i class="fa fa-times"></i>
-												</span>
-											</button>
-										</li>
-									<% } %>
-								</ul>
-							</div>
+							<p class="control">
+								<label class="checkbox">
+								<input name="tag_reaction-isEnabled" type="checkbox" onclick="$('#tag_reaction-options').toggleClass('is-hidden');" <%= configData.tag_reaction.isEnabled ? "checked" : "" %>>
+									Repond when tagged in chat
+								</label>
+							</p>
+							<ul id="tag_reaction-options" class="<%= configData.tag_reaction.isEnabled ? '' : 'is-hidden' %>">
+								<% for(var i=0; i<configData.tag_reaction.messages.length; i++) { %>
+									<li>
+										<button class="button is-small is-white" name="tag_reaction-<%= i %>-removed" onclick="saveFormState();">
+											<span class="icon is-small" style="margin-left: -2px;">
+												<i class="fa fa-times"></i>
+											</span>
+										</button>
+										<%- configData.tag_reaction.messages[i].replace("@user", "<strong>@user</strong>") %>
+									</li>
+								<% } %>
+							</ul>
+							<br>
 							<div class="control is-horizontal">
 								<div class="control is-grouped">
 									<p class="control is-expanded">
-										<input id="new-reaction-message" class="input" type="text" maxlength="2000" placeholder="Response message">
+										<input id="new-reaction-message" class="input" type="text" maxlength="2000" placeholder="Response message" onkeypress="return event.keyCode != 13;">
 										<span class="help">Type <code>@user</code> for a user mention.</span>
 									</p>
 									<p class="control">
@@ -91,7 +89,14 @@
 								</div>
 							</div>
 							<br>
+							<% var formButtonsUnsaved = false; %>
 							<% include ../partials/form-buttons %>
+							<div id="form-buttons" style="display:none;background-color:#f5f7fa;position: fixed;padding: 20px;left: 50%;transform: translate(-50%, 0%);bottom: 0px;z-index: 100;width: 100%;">
+								<div class="container">
+									<% var formButtonsUnsaved = true; %>
+									<% include ../partials/form-buttons %>
+								</div>
+							</div>
 						</form>
 					</div>
 				</div>

@@ -1,5 +1,5 @@
 // Member left server
-module.exports = (bot, db, winston, svr, member) => {
+module.exports = (bot, db, config, winston, svr, member) => {
 	// Get server data
 	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(!err && serverDocument) {
@@ -31,14 +31,14 @@ module.exports = (bot, db, winston, svr, member) => {
 				// Send member_removed_message if necessary
 				if(serverDocument.config.moderation.status_messages.member_removed_message.isEnabled) {
 					winston.info("Member '" + member.user.username + "' removed from server '" + svr.name + "'", {svrid: svr.id, usrid: member.id});
-					var ch = svr.channels.find("id", serverDocument.config.moderation.status_messages.member_removed_message.channel_id);
+					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.member_removed_message.channel_id);
 					if(ch) {
 						var channelDocument = serverDocument.channels.id(ch.id);
 						if(!channelDocument || channelDocument.bot_enabled) {
 							var toSend = serverDocument.config.moderation.status_messages.member_removed_message.messages[getRandomInt(0, serverDocument.config.moderation.status_messages.member_removed_message.messages.length-1)].replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**");
 							var kickDocument = serverDocument.member_kicked_data.id(member.id);
 							if(kickDocument) {
-								var creator = svr.members.find("id", kickDocument.creator_id);
+								var creator = svr.members.get(kickDocument.creator_id);
 								if(creator) {
 									toSend += "\n\nKicked by **@" + bot.getName(creator, svr) + "**" + (kickDocument.reason ? (", reason: " + kickDocument.reason) : "");
 								}
@@ -49,14 +49,14 @@ module.exports = (bot, db, winston, svr, member) => {
 									}
 								});
 							}
-							ch.sendMessage(toSend);
+							ch.createMessage(toSend);
 						}
 					}
 				}
 
 				// Send member_removed_pm if necessary
 				if(serverDocument.config.moderation.status_messages.member_removed_pm.isEnabled && !member.user.bot) {
-					member.sendMessage(serverDocument.config.moderation.status_messages.member_removed_pm.message_content);
+					member.user.getDMChannel().createMessage(serverDocument.config.moderation.status_messages.member_removed_pm.message_content);
 				}
 			}
 		} else {
@@ -69,7 +69,3 @@ module.exports = (bot, db, winston, svr, member) => {
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-String.prototype.replaceAll = (target, replacement) => {
-    return this.split(target).join(replacement);
-};

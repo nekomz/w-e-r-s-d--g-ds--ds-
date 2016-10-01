@@ -8,9 +8,5 @@ module.exports = (query, rating, callback) => {
     	} else {
             callback();
         }
-    };
-};
-
-String.prototype.replaceAll = (target, replacement) => {
-	return this.split(target).join(replacement);
+    });
 };

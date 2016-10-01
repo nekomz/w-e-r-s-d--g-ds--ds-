@@ -26,7 +26,7 @@
 							<% if(currentPage=="/dashboard/commands/music") { %>
 								<a class="is-active" href="#">Music</a>
 							<% } else { %>
-								<a href="/dashboard/commands/music?svrid=<%= serverData.id %>">RSS Feeds</a>
+								<a href="/dashboard/commands/music?svrid=<%= serverData.id %>">Music</a>
 							<% } %>
 						</li>
 					<% } %>
@@ -36,6 +36,13 @@
 						<% } else { %>
 							<a href="/dashboard/commands/rss-feeds?svrid=<%= serverData.id %>">RSS Feeds</a>
 						<% } %>
+					</li>
+					<li>
+						<% if(currentPage=="/dashboard/commands/streamers") { %>
+								<a class="is-active" href="#">Streamers</a>
+							<% } else { %>
+								<a href="/dashboard/commands/streamers?svrid=<%= serverData.id %>">Streamers</a>
+							<% } %>
 					</li>
 					<li>
 						<% if(currentPage=="/dashboard/commands/tags") { %>
@@ -92,7 +99,7 @@
 				<a href="/dashboard/stats-points/ranks?svrid=<%= serverData.id %>">Ranks</a>
 			<% } %>
 			<% if(currentPage=="/dashboard/stats-points/awesome-points") { %>
-				<a class="is-active" href="#">AwesomePoints&tm;</a>
+				<a class="is-active" href="#">AwesomePoints</a>
 			<% } else { %>
 				<a href="/dashboard/stats-points/awesome-points?svrid=<%= serverData.id %>">AwesomePoints</a>
 			<% } %>
@@ -108,7 +115,7 @@
 			<% } else { %>
 				<a href="/dashboard/management/admins?svrid=<%= serverData.id %>">Admins</a>
 			<% } %>
-			<% if(["/dashboard/management/moderation", "/dashboard/management/blocked", "/dashboard/management/muted", "/dashboard/management/strikes", "/dashboard/management/member-messages", "/dashboard/management/filters"].indexOf(currentPage)>-1) { %>
+			<% if(["/dashboard/management/moderation", "/dashboard/management/blocked", "/dashboard/management/muted", "/dashboard/management/strikes", "/dashboard/management/status-messages", "/dashboard/management/filters"].indexOf(currentPage)>-1) { %>
 				<a class="<%= currentPage=='/dashboard/management/moderation' ? 'is-active' : '' %>" href="<%= currentPage=='/dashboard/management/moderation' ? '#' : ('/dashboard/management/moderation?svrid=' + serverData.id) %>">Moderation</a>
 				<ul>
 					<li>
@@ -134,10 +141,10 @@
 					</li>
 					<% if(configData.moderation.isEnabled) { %>
 						<li>
-							<% if(currentPage=="/dashboard/management/member-messages") { %>
-								<a class="is-active" href="#">Member Messages</a>
+							<% if(currentPage=="/dashboard/management/status-messages") { %>
+								<a class="is-active" href="#">Status Messages</a>
 							<% } else { %>
-								<a href="/dashboard/management/member-messages?svrid=<%= serverData.id %>">Member Messages</a>
+								<a href="/dashboard/management/status-messages?svrid=<%= serverData.id %>">Status Messages</a>
 							<% } %>
 						</li>
 						<li>
@@ -167,6 +174,11 @@
 			<% } else { %>
 				<a href="/dashboard/management/roles?svrid=<%= serverData.id %>">Roles</a>
 			<% } %>
+			<% if(currentPage=="/dashboard/management/logs") { %>
+				<a class="is-active" href="#">Logs</a>
+			<% } else { %>
+				<a href="/dashboard/management/logs?svrid=<%= serverData.id %>">Logs</a>
+			<% } %>
 		</li>
 	</ul>
 	<p class="menu-label">
@@ -179,7 +191,7 @@
 			<% } else { %>
 				<a href="/dashboard/other/name-display?svrid=<%= serverData.id %>">Name Display</a>
 			<% } %>
-			<% if(currentPage=="/dashboard/other/name-display") { %>
+			<% if(currentPage=="/dashboard/other/ongoing-activities") { %>
 				<a class="is-active" href="#">Ongoing Activities</a>
 			<% } else { %>
 				<a href="/dashboard/other/ongoing-activities?svrid=<%= serverData.id %>">Ongoing Activities</a>
@@ -200,7 +212,7 @@
 						<% } %>
 					</li>
 					<li>
-						<a href="#">Discover Extensions &raquo;</a>
+						<a href="/extensions">Discover Extensions &raquo;</a>
 					</li>
 				</ul>
 			<% } else { %>

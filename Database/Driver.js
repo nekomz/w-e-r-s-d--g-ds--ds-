@@ -7,11 +7,12 @@ userSchema.plugin(findOrCreate);
 const modulesSchema = require("./Schemas/modulesSchema.js");
 
 var db;
+var connection;
 
 // Connect to and setup database
 module.exports = {
 	initialize: (url, callback) => {
-		var connection = mongoose.createConnection(url);
+		connection = mongoose.createConnection(url);
 		connection.on("error", callback);
 		connection.once("open", () => {
 			if(!connection.models.servers) {
@@ -20,17 +21,14 @@ module.exports = {
 			if(!connection.models.users) {
 				connection.model("users", userSchema);
 			}
-			if(!connection.models.modules) {
-				connection.model("modules", modulesSchema);
-			}
-			if(!connection.models.gallery) {
-				connection.model("gallery", modulesSchema);
-			}
 			db = connection.models;
 			callback();
 		});
 	},
 	get: () => {
 		return db;
+	},
+	getConnection: () => {
+		return connection;
 	}
 };

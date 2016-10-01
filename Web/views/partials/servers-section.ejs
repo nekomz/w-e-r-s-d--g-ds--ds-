@@ -1,14 +1,36 @@
-<script src="/js/bulma.js"></script>
 <script>
-showSelections();
-function showSelections() {
-	document.getElementById("category-select").value = "<%= selectedCategory %>";
-	document.getElementById("public-select").value = "<%= isPublicOnly %>";
-	document.getElementById("sort-select").value = "<%= sortOrder %>";
-	document.getElementById("count-select").value = "<%= itemsPerPage %>";
+function searchServers(query) {
+	window.location.href = "/activity/servers?q=" + encodeURI(query.replaceAll("#", "")) + "&count=<%= data.itemsPerPage %>&page=<%= data.currentPage %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>";
 }
 
-switchLayout();
+document.getElementById("search-button").href = "javascript:searchServers(document.getElementById('search-input').value);";
+document.getElementById("search-input").setAttribute("list", "servers");
+document.getElementById("search-input").onkeydown = function() {
+	if(event.keyCode==13) {
+		searchServers(this.value);
+	}
+};
+mediaStyle(mq);
+$.getJSON("/serverlist", function(data) {
+	searchInputAutocomplete = new autoComplete({
+	    selector: "#search-input",
+	    minChars: 2,
+	    source: function(q, res) {
+	    	q = q.toLowerCase();
+	       	res(data.filter(function(a) {
+	       		return a.toLowerCase().indexOf(q)>-1;
+	       	}));
+	    }
+	});
+});
+
+function showSelections() {
+	document.getElementById("category-select").value = "<%= data.selectedCategory %>";
+	document.getElementById("public-select").value = "<%= data.isPublicOnly %>";
+	document.getElementById("sort-select").value = "<%= data.sortOrder %>";
+	document.getElementById("count-select").value = "<%= data.itemsPerPage %>";
+}
+
 function switchLayout(type) {
 	if(!type) {
 		type = localStorage.getItem("servers-layout");
@@ -34,134 +56,139 @@ function switchLayout(type) {
 			break;
 	}
 }
-
-function searchServers(query) {
-	loadFrameContent("/servers?q=" + encodeURI(query.replaceAll("#", "")) + "&count=<%= itemsPerPage %>&page=<%= currentPage %>&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>");
-	window.location.hash = "servers-" + encodeURI(query.replaceAll("#", ""));
-}
 </script>
 
 <br><br>
 <div class="container">
-	<div class="control is-horizontal">
-		<span class="select">
-			<select id="category-select" onchange="loadFrameContent('/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage %>&sort=<%= sortOrder %>&category=' + this.value + '&publiconly=<%= isPublicOnly %>');">
-				<option value="All">All Categories</option>
-				<option>Gaming</option>
-				<option>Tech</option>
-				<option>Programming</option>
-				<option>Community</option>
-				<option>Bots</option>
-				<option>Other</option>
-			</select>
-		</span>
-		&nbsp;&nbsp;
-		<span class="select">
-			<select id="public-select" onchange="loadFrameContent('/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage %>&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=' + this.value);">
-				<option value="false">Show All Servers</option>
-				<option value="true">Public Listings Only</option>
-			</select>
-		</span>
-		&nbsp;&nbsp;
-		<span class="select">
-			<select id="sort-select" onchange="loadFrameContent('/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage %>&sort=' + this.value + '&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>');">
-				<option value="messages-asc">Messages Today (ascending)</option>
-				<option value="messages-des">Messages Today (descending)</option>
-				<option value="alphabetical-asc">Alphabetical (A-Z)</option>
-				<option value="alphabetical-des">Alphabetical (Z-A)</option>
-				<option value="owner-asc">Owner Name (A-Z)</option>
-				<option value="owner-des">Owner Name (Z-A)</option>
-				<option value="members-asc">Members (ascending)</option>
-				<option value="members-des">Members (descending)</option>
-				<option value="created-asc">Newest First</option>
-				<option value="created-des">Oldest First</option>
-			</select>
-		</span>
-		&nbsp;&nbsp;
-		<span class="select">
-			<select id="count-select" onchange="loadFrameContent('/servers?q=<%= activeSearchQuery %>&count=' + this.value + '&page=<%= currentPage %>&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>');">
-				<option value="0">All Items</option>
-				<option value="8">8 items/page</option>
-				<option value="16">16 items/page</option>
-				<option value="24">24 items/page</option>
-				<option value="32">32 items/page</option>
-				<option value="48">48 items/page</option>
-				<option value="64">64 items/page</option>
-			</select>
-		</span>
-		&nbsp;&nbsp;
-		<p class="control has-addons">
-			<a id="grid-layout-button" class="button" onclick="switchLayout('grid');">
-				<span class="icon is-small">
-					<i class="fa fa-th"></i>
+	<nav class="level">
+		<div class="level-left">
+			<div class="level-item">
+				<span class="select">
+					<select id="category-select" onchange="window.location.href = '/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.currentPage %>&sort=<%= data.sortOrder %>&category=' + this.value + '&publiconly=<%= data.isPublicOnly %>';">
+						<option value="All">All Categories</option>
+						<option>Gaming</option>
+						<option>Tech</option>
+						<option>Programming</option>
+						<option>Community</option>
+						<option>Bots</option>
+						<option>Other</option>
+					</select>
 				</span>
-				<span>Grid</span>
-			</a>
-			<a id="list-layout-button" class="button" onclick="switchLayout('list');">
-				<span class="icon is-small">
-					<i class="fa fa-th-list"></i>
+			</div>
+			<div class="level-item">
+				<span class="select">
+					<select id="public-select" onchange="window.location.href = '/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.currentPage %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=' + this.value;">
+						<option value="false">Show All Servers</option>
+						<option value="true">Public Listings Only</option>
+					</select>
 				</span>
-				<span>List</span>
-			</a>
-		</p>
-	</div>
+			</div>
+		</div>
+		<div class="level-right">
+			<div class="level-item">
+				<span class="select">
+					<select id="sort-select" onchange="window.location.href = '/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.currentPage %>&sort=' + this.value + '&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>';">
+						<option value="messages-asc">Messages Today (ascending)</option>
+						<option value="messages-des">Messages Today (descending)</option>
+						<option value="alphabetical-asc">Alphabetical (A-Z)</option>
+						<option value="alphabetical-des">Alphabetical (Z-A)</option>
+						<option value="owner-asc">Owner Name (A-Z)</option>
+						<option value="owner-des">Owner Name (Z-A)</option>
+						<option value="members-asc">Members (ascending)</option>
+						<option value="members-des">Members (descending)</option>
+						<option value="created-asc">Newest First</option>
+						<option value="created-des">Oldest First</option>
+					</select>
+				</span>
+			</div>
+			<div class="level-item">
+				<p class="control has-addons">
+					<a id="grid-layout-button" class="button" onclick="switchLayout('grid');">
+						<span class="icon is-small">
+							<i class="fa fa-th"></i>
+						</span>
+						<span>Grid</span>
+					</a>
+					<a id="list-layout-button" class="button" onclick="switchLayout('list');">
+						<span class="icon is-small">
+							<i class="fa fa-th-list"></i>
+						</span>
+						<span>List</span>
+					</a>
+				</p>
+			</div>
+			<div class="level-item">
+				<span class="select">
+					<select id="count-select" onchange="window.location.href = '/activity/servers?q=<%= activeSearchQuery %>&count=' + this.value + '&page=<%= data.currentPage %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>';">
+						<option value="0">All Items</option>
+						<option value="8">8 items/page</option>
+						<option value="16">16 items/page</option>
+						<option value="24">24 items/page</option>
+						<option value="32">32 items/page</option>
+						<option value="48">48 items/page</option>
+						<option value="64">64 items/page</option>
+					</select>
+				</span>
+			</div>
+		</div>
+	</nav>
 	<br>
 	<div id="grid-layout" class="container is-hidden">
-		<% if(serverData.length>0) { %>
+		<% if(data.serverData.length>0) { %>
 			<div class="columns">
-				<% for(var i=0; i<serverData.length; i++) { %>
+				<% for(var i=0; i<data.serverData.length; i++) { %>
 					<div class="column is-one-quarter">
 						<div class="card">
 							<div class="card-image">
 								<figure class="image is-square">
-									<img src="<%= serverData[i].icon %>" alt="<%= serverData[i].id %>">
+									<img src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>">
 								</figure>
 							</div>
 							<div class="card-content" style="max-height: 500px;overflow-y: scroll;">
-								<h3 class="title is-3"><%= serverData[i].name %></h3>
-								<h5 class="subtitle is-5"><%= serverData[i].category %></h5>
+								<h3 class="title is-3"><%= data.serverData[i].name %></h3>
+								<h5 class="subtitle is-5"><%= data.serverData[i].category %></h5>
 								<div class="level is-mobile">
 									<div class="level-item has-text-centered">
 										<p class="heading">Members</p>
-										<p class="title"><%= serverData[i].members %></p>
+										<p class="title"><%= data.serverData[i].members %></p>
 									</div>
 									<div class="level-item has-text-centered">
 										<p class="heading">Messages</p>
-										<p class="title"><%= serverData[i].messages %></p>
+										<p class="title"><%= data.serverData[i].messages %></p>
 									</div>
 									<div class="level-item has-text-centered">
 										<p class="heading">Created</p>
-										<p class="title"><%= serverData[i].created %>d</p>
+										<p class="title"><%= data.serverData[i].created %>d</p>
 									</div>
 								</div>
 
 								<div class="media">
 									<div class="media-left">
 										<figure class="image is-32x32">
-											<img src="<%= serverData[i].owner.avatar %>" alt="<%= serverData[i].owner.id %>">
+											<img src="<%= data.serverData[i].owner.avatar %>" alt="<%= data.serverData[i].owner.id %>">
 										</figure>
 									</div>
 									<div class="media-content">
-										<p class="title is-5"><%= serverData[i].owner.name %></p>
-										<p class="subtitle is-6">@<%= serverData[i].owner.username %></p>
+										<p class="title is-5"><%= data.serverData[i].owner.name %></p>
+										<p class="subtitle is-6">@<%= data.serverData[i].owner.username %></p>
 									</div>
 								</div>
 
 								<div class="content">
-								<% if(serverData[i].description) { %>
+								<% if(data.serverData[i].description) { %>
 									<%- serverData[i].description %>
 								<% } %>
 								</div>
 
-								<% if(serverData[i].invite_link) { %>
+								<% if(data.serverData[i].invite_link) { %>
 									<div class="content">
-										Use <code><%= serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= serverData[i].name %>
+										Use <code><%= data.serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= data.serverData[i].name %>
 									</div>
 								<% } %>
 							</div>
-							<% if(serverData[i].invite_link) { %>
+							<% if(data.serverData[i].invite_link) { %>
 								<footer class="card-footer">
-									<a class="card-footer-item" href="<%= serverData[i].invite_link %>">Join Server</a>
+									<a class="card-footer-item" href="<%= data.serverData[i].invite_link %>">Join Server</a>
 								</footer>
 							<% } %>
 						</div>
@@ -176,34 +203,34 @@ function searchServers(query) {
 		<% } %>
 	</div>
 	<div id="list-layout" class="container is-hidden">
-		<% if(serverData.length>0) { %>
+		<% if(data.serverData.length>0) { %>
 			<table class="table">
 				<thead>
 					<tr>
 						<th>Name</th>
-						<th>Category</th>
+						<th>Members</th>
 						<th>Messages</th>
 						<th>Owner</th>
 					</tr>
 				</thead>
 				<tbody>
-					<% for(var i=0; i<serverData.length; i++) { %>
+					<% for(var i=0; i<data.serverData.length; i++) { %>
 						<tr class="modal-button" data-target="#server-<%= i %>-modal">
 							<td>
-								<img class="image is-24x24" src="<%= serverData[i].icon %>" alt="<%= serverData[i].id %>" style="border-radius: 100%;float:left;">
+								<img class="image is-24x24" src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>" style="border-radius: 100%;float:left;">
 								&nbsp;
-								<%= serverData[i].name %>
+								<%= data.serverData[i].name %>
 							</td>
 							<td>
-								<%= serverData[i].category %>
+								<%= data.serverData[i].members %>
 							</td>
 							<td>
-								<%= serverData[i].messages %>
+								<%= data.serverData[i].messages %>
 							</td>
 							<td>
-								<img class="image is-24x24" src="<%= serverData[i].owner.avatar %>" alt="<%= serverData[i].owner.id %>" style="border-radius: 100%;float:left;">
+								<img class="image is-24x24" src="<%= data.serverData[i].owner.avatar %>" alt="<%= data.serverData[i].owner.id %>" style="border-radius: 100%;float:left;">
 								&nbsp;
-								@<%= serverData[i].owner.username %>
+								@<%= data.serverData[i].owner.username %>
 							</td>
 						</tr>
 						<div id="server-<%= i %>-modal" class="modal">
@@ -214,27 +241,27 @@ function searchServers(query) {
 										<article class="media">
 											<div class="media-left">
 												<figure class="image is-128x128">
-													<img src="<%= serverData[i].icon %>" alt="<%= serverData[i].id %>">
+													<img src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>">
 												</figure>
 											</div>
-											<div class="media-content">
+											<div class="media-content" style="overflow-x: scroll;">
 												<div class="content">
 													<h4 class="title is-4">
-														<%= serverData[i].name %> <small class="subtitle is-5"><%= serverData[i].category %></small>
+														<%= data.serverData[i].name %> <small class="subtitle is-5"><%= data.serverData[i].category %></small>
 													</h4>
 													<h6 class="subtitle is-6">
-														Owned by @<%= serverData[i].owner.username %>, created <%= serverData[i].created %> days ago
+														Owned by @<%= data.serverData[i].owner.username %>, created <%= data.serverData[i].created %> days ago
 													</h6>
-													<% if(serverData[i].description) { %>
+													<% if(data.serverData[i].description) { %>
 														<%- serverData[i].description %>
 														<br>
 													<% } %>
-													Use <code><%= serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= serverData[i].name %>
+													Use <code><%= data.serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= data.serverData[i].name %>
 												</div>
-												<% if(serverData[i].invite_link) { %>
+												<% if(data.serverData[i].invite_link) { %>
 													<nav class="level">
 														<div class="level-left">
-																<a class="level-item" href="<%= serverData[i].invite_link %>">
+																<a class="level-item" href="<%= data.serverData[i].invite_link %>">
 																	Join Server
 																</a>
 														</div>
@@ -252,7 +279,7 @@ function searchServers(query) {
 			</table>
 		<% } %>
 	</div>
-	<% if(serverData.length==0) { %>
+	<% if(data.serverData.length==0) { %>
 		<article class="message is-danger">
 			<div class="message-header">
 				<span class="icon">
@@ -262,7 +289,7 @@ function searchServers(query) {
 			</div>
 			<div class="message-body">
 				There aren't any servers that matched your filters and/or query. 
-				<a class="button is-small" href="javascript:loadFrameContent('/servers?q=&count=<%= itemsPerPage %>&page=1&sort=<%= sortOrder %>&category=All&publiconly=false');">
+				<a class="button is-small" href="javascript:window.location.href = '/activity/servers?q=&count=<%= data.itemsPerPage %>&page=1&sort=<%= data.sortOrder %>&category=All&publiconly=false';">
 					<span class="icon is-small">
 						<i class="fa fa-chevron-left"></i>
 					</span>
@@ -271,13 +298,13 @@ function searchServers(query) {
 			</div>
 		</article>
 	<% } %>
-	<% if(numPages>1) { %>
+	<% if(data.numPages>1) { %>
 		<br>
 		<nav class="pagination">
 			<ul>
 				<% if(currentPage>2) { %>
 					<li>
-						<a class="button" href="/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=1&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>">
+						<a class="button" href="/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=1&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>">
 							1
 						</a>
 					</li>
@@ -289,20 +316,20 @@ function searchServers(query) {
 				<% } %>
 				<% if(currentPage>1) { %>
 					<li>
-						<a class="button" href="/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage-1 %>&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>">
-							<%= currentPage-1 %>
+						<a class="button" href="/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.currentPage-1 %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>">
+							<%= data.currentPage-1 %>
 						</a>
 					</li>
 				<% } %>
 				<li>
-					<a class="button is-primary" href="/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage %>&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>">
-						<%= currentPage %>
+					<a class="button is-primary" href="/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.currentPage %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>">
+						<%= data.currentPage %>
 					</a>
 				</li>
 				<% if(currentPage<numPages) { %>
 					<li>
-						<a class="button" href="/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage+1 %>&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>">
-							<%= currentPage+1 %>
+						<a class="button" href="/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.currentPage+1 %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>">
+							<%= data.currentPage+1 %>
 						</a>
 					</li>
 				<% } %>
@@ -313,8 +340,8 @@ function searchServers(query) {
 				<% } %>
 				<% if(currentPage<numPages-1) { %>
 					<li>
-						<a class="button" href="/servers?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= numPages %>&sort=<%= sortOrder %>&category=<%= selectedCategory %>&publiconly=<%= isPublicOnly %>">
-							<%= numPages %>
+						<a class="button" href="/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.numPages %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>">
+							<%= data.numPages %>
 						</a>
 					</li>
 				<% } %>

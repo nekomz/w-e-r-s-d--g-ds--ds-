@@ -1,14 +1,14 @@
 // User unbanned from server
-module.exports = (bot, db, winston, svr, member) => {
+module.exports = (bot, db, config, winston, svr, member) => {
 	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(!err && serverDocument) {
 			if(serverDocument.config.moderation.isEnabled && serverDocument.config.moderation.status_messages.member_unbanned_message.isEnabled) {
 				winston.info("Member '" + member.user.username + "' unbanned from server '" + svr.name + "'", {svrid: svr.id, usrid: member.id});
-				var ch = svr.channels.find("id", serverDocument.config.moderation.status_messages.member_unbanned_message.channel_id);
+				var ch = svr.channels.get(serverDocument.config.moderation.status_messages.member_unbanned_message.channel_id);
 				if(ch) {
 					var channelDocument = serverDocument.channels.id(ch.id);
 					if(!channelDocument || channelDocument.bot_enabled) {
-						ch.sendMessage(serverDocument.config.moderation.status_messages.member_unbanned_message.messages[getRandomInt(0, serverDocument.config.moderation.status_messages.member_unbanned_message.messages.length-1)].replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**"));
+						ch.createMessage(serverDocument.config.moderation.status_messages.member_unbanned_message.messages[getRandomInt(0, serverDocument.config.moderation.status_messages.member_unbanned_message.messages.length-1)].replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**"));
 					}
 				}
 			}

@@ -1,88 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>AwesomeBot Activity</title>
+	<title><%= data.pageTitle %> - AwesomeBot Activity</title>
 	<% include ../partials/head %>
 
 	<link rel="stylesheet" href="/css/auto-complete.css">
 	<script src="/js/auto-complete.min.js"></script>
 	<script>
+	var mq = window.matchMedia("screen and (max-width: 768px)");
+	mq.addListener(mediaStyle);
+
 	var searchInputAutocomplete;
 	function switchSearch(type) {
-		document.getElementById("frame").style.backgroundImage = "";document.getElementById("frame").style.paddingBottom = "";
-		var query = "";
-		if(type.indexOf("-")>-1) {
-			query = type.substring(type.indexOf("-")+1);
-			type = type.substring(0, type.indexOf("-"));
-		}
-		if(searchInputAutocomplete) {
-			searchInputAutocomplete.destroy();
-		}
-		if(type=="users") {
-			document.getElementById("search-button").href = "javascript:window.location.hash = 'users-' + encodeURI(document.getElementById('search-input').value.replaceAll('#', '----'));loadFrameContent('/users?q=' + document.getElementById('search-input').value.replaceAll('#', '----'));";
-			document.getElementById("search-input").onkeydown = function() {
-				if(event.keyCode==13) {
-					window.location.hash = "users-" + encodeURI(this.value.replaceAll("#", "----"));
-					loadFrameContent('/users?q=' + encodeURI(this.value.replaceAll("#", "----")));
-				}
-			};
-			if(query) {
-				document.getElementById("search-input").value = decodeURI(query.replaceAll("----", "#"));
-				window.location.hash = "users-" + encodeURI(query.replaceAll("#", "----"));
-				loadFrameContent('/users?q=' + encodeURI(query.replaceAll("#", "----")));
-			} else {
-				window.location.hash = "users";
-				loadFrameContent("/users?q=");
+		window.location.href = "/activity/" + type;
+	}
+	function mediaStyle(mq) {
+		if(mq.matches) {
+			$(".header-search-box").removeClass("is-large");
+			document.getElementById("frame").style.paddingLeft = "15px";
+			document.getElementById("frame").style.paddingRight = "15px";
+			if(document.getElementById("search-select").value=="servers") {
+				switchLayout("list");
 			}
-			$.getJSON("/userlist", function(data) {
-				searchInputAutocomplete = new autoComplete({
-				    selector: "#search-input",
-				    minChars: 2,
-				    source: function(q, res) {
-				    	q = q.toLowerCase();
-				       	res(data.filter(function(a) {
-				       		return a.toLowerCase().indexOf(q)>-1;
-				       	}));
-				    }
-				});
-			});
 		} else {
-			document.getElementById("search-button").href = "javascript:searchServers(document.getElementById('search-input').value);";
-			document.getElementById("search-input").setAttribute("list", "servers");
-			document.getElementById("search-input").onkeydown = function() {
-				if(event.keyCode==13) {
-					searchServers(this.value);
-				}
-			};
-			window.location.hash = "servers";
-			$.getJSON("/serverlist", function(data) {
-				searchInputAutocomplete = new autoComplete({
-				    selector: "#search-input",
-				    minChars: 2,
-				    source: function(q, res) {
-				    	q = q.toLowerCase();
-				       	res(data.filter(function(a) {
-				       		return a.toLowerCase().indexOf(q)>-1;
-				       	}));
-				    }
-				});
-			});
-			loadFrameContent("/servers?q=&count=16&page=1&sort=messages-des&category=All&publiconly=false", function() {
-				if(query) {
-					document.getElementById("search-input").value = decodeURI(query);
-					searchServers(query);
-				}
-			});
+			$(".header-search-box").addClass("is-large");
+			document.getElementById("frame").style.paddingLeft = "0px";
+			document.getElementById("frame").style.paddingRight = "0px";
 		}
-		document.getElementById("search-select").value = type || "servers";
 	}
 
 	String.prototype.replaceAll = function(target, replacement) {
-		return this.split(target).join(replacement);
+		return this.replace(new RegExp(target, "g"), replacement);
 	};
 	</script>
 </head>
-<body onload="loadBackground();switchSearch(window.location.hash.slice(1));">
+<body onload="loadBackground();">
 	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/img/header-bg.jpg'); background-size: cover;" ondblclick="loadBackground();">
 		<div class="hero-head">
 			<% include ../partials/header %>
@@ -104,14 +56,14 @@
 			<div class="columns">
 				<div class="column is-half is-offset-one-quarter">
 					<p class="control has-addons has-addons-centered">
-						<span class="select is-large">
+						<span class="select is-large header-search-box">
 							<select id="search-select" onchange="switchSearch(this.value);">
-								<option value="servers">Servers</option>
-								<option value="users">Users</option>
+								<option value="servers"<%= mode=="servers" ? " selected" : "" %>>Servers</option>
+								<option value="users" <%= mode=="users" ? " selected" : "" %>>Users</option>
 							</select>
 						</span>
-						<input id="search-input" class="input is-expanded is-large" type="text" placeholder="I'm looking for...">
-						<a id="search-button" class="button is-primary is-large" href="javascript:searchServers(document.getElementById('search-input').value);">
+						<input id="search-input" class="input is-expanded is-large header-search-box" type="text" placeholder="I'm looking for..." value="<%= activeSearchQuery.split('----').join('#') %>">
+						<a id="search-button" class="button is-primary is-large header-search-box">
 							<span class="icon">
 								<i class="fa fa-search"></i>
 							</span>
@@ -126,7 +78,7 @@
 			<div class="container">
 				<div class="tabs is-centered">
 					<ul>
-						<li>Last updated <%= updatedPrettyDate %></li>
+						<li class="subtitle is-5">Last updated <%= updatedPrettyDate %></li>
 					</ul>
 				</div>
 			</div>
@@ -135,7 +87,17 @@
 
 	<% include ../partials/info-level-section %>
 
-	<section id="frame" class="is-light"></section>
+	<section id="frame" class="is-light">
+		<% if(mode=="servers") { %>
+			<% include ../partials/servers-section %>
+			<script>
+			switchLayout();
+			showSelections();
+			</script>
+		<% } else { %>
+			<% include ../partials/users-section %>
+		<% } %>
+	</section>
 
 	<section class="hero is-medium is-black">
 		<div class="hero-body">

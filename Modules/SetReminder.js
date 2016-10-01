@@ -1,9 +1,11 @@
 // Set a reminder for a user
 module.exports = (bot, winston, usrid, reminder) => {
 	setTimeout(() => {
-		var usr = bot.users.find("id", usrid);
+		var usr = bot.users.get(usrid);
 		if(usr) {
-			usr.sendMessage("**Reminder:** " + reminder.name);
+			usr.getDMChannel().then(ch => {
+				ch.createMessage("**Reminder:** " + reminder.name);
+			});
 			reminder.remove().exec();
 			winston.info("Reminded user of '" + reminder.name, {usrid: usrid});
 		}

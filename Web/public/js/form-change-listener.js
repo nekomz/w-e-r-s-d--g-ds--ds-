@@ -11,3 +11,21 @@ $(window).bind("beforeunload", function(e) {
 		return message;
 	}
 });
+
+$(window).scroll(function() {
+	if($(window).scrollTop() + $(window).height() > $(document).height() - 150) {
+		if($("#form-buttons").css("display")!="none") {
+			$("#form-buttons").fadeOut(86);
+		}
+	}
+});
+setInterval(function() {
+	if($(window).scrollTop() + $(window).height() <= $(document).height() - 150) {
+		var form_state = $("#form").serialize();
+		if(initial_form_state!=form_state && $("#form-buttons").css("display")=="none") {
+			$("#form-buttons").fadeIn(86);
+		} else if(initial_form_state==form_state && $("#form-buttons").css("display")!="none") {
+			$("#form-buttons").fadeOut(86);
+		}
+	}
+}, 1000);

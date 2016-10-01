@@ -1,26 +1,35 @@
-// User details updated on server (role, nickname, etc.)
-module.exports = (bot, db, winston, svr, oldmember, newmember) => {
+// User details updated on server (role, nick, etc.)
+module.exports = (bot, db, config, winston, svr, member, oldmemberdata) => {
 	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(!err && serverDocument) {
 			// Send member_nick_updated_message if necessary
 			if(serverDocument.config.moderation.status_messages.member_nick_updated_message.isEnabled) {
-				var ch = svr.channels.find("id", serverDocument.config.moderation.status_messages.member_nick_updated_message.channel_id);
+				var ch = svr.channels.get(serverDocument.config.moderation.status_messages.member_nick_updated_message.channel_id);
 				if(ch) {
 					var channelDocument = serverDocument.channels.id(ch.id);
 					if(!channelDocument || channelDocument.bot_enabled) {
 						// Nickname added
-						if(oldmember.nickname!=newmember.nickname && !oldmember.nickname && newmember.nickname) {
-							ch.sendMessage("**@" + bot.getName(svr, serverDocument, newmember) + "** got a nickname: `" + newmember.nickname + "`", {disable_everyone: true});
+						if(oldmember.nick!=member.nick && !oldmember.nick && member.nick) {
+							ch.createMessage({
+								content: "**@" + bot.getName(svr, serverDocument, member) + "** got a nick: `" + member.nick + "`",
+								disableEveryone: true
+							});
 						}
 
 						// Nickname changed
-						if(oldmember.nickname!=newmember.nickname && oldmember.nickname && newmember.nickname) {
-							ch.sendMessage("**@" + bot.getName(svr, serverDocument, newmember) + "** changed their nickname from `" + oldmember.nickname + "` to `" + newmember.nickname + "`", {disable_everyone: true});
+						if(oldmember.nick!=member.nick && oldmember.nick && member.nick) {
+							ch.createMessage({
+								content: "**@" + bot.getName(svr, serverDocument, member) + "** changed their nick from `" + oldmember.nick + "` to `" + member.nick + "`",
+								disableEveryone: true
+							});
 						}
 
 						// Nickname removed
-						if(oldmember.nickname!=newmember.nickname && oldmember.nickname && !newmember.nickname) {
-							ch.sendMessage("**@" + bot.getName(svr, serverDocument, newmember) + "** removed their nickname (`" + oldmember.nickname + "`)", {disable_everyone: true});
+						if(oldmember.nick!=member.nick && oldmember.nick && !member.nick) {
+							ch.createMessage({
+								content: "**@" + bot.getName(svr, serverDocument, member) + "** removed their nick (`" + oldmember.nick + "`)",
+								disableEveryone: true
+							});
 						}
 					}
 				}

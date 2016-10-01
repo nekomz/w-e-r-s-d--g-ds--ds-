@@ -6,7 +6,7 @@
 	<script src="/js/form-change-listener.js"></script>
 </head>
 <body onload="loadBackground();saveFormState();">
-	<% include ../partials/admin-header %>
+	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
@@ -47,21 +47,20 @@
 							<label class="label">Cooldown period</label>
 							<p class="control">
 								<span class="select">
-									<select name="command_cooldown" value="<%= configData.command_cooldown %>">
-										<option value="0">None</option>
-										<option value="2000">2 seconds</option>
-	                                    <option value="3000">3 seconds</option>
-	                                    <option value="5000">5 seconds</option>
-	                                    <option value="10000">10 seconds</option>
-	                                    <option value="15000">15 seconds</option>
-	                                    <option value="30000">30 seconds</option>
-	                                    <option value="45000">45 seconds</option>
-	                                    <option value="60000">1 minute</option>
-	                                    <option value="120000">2 minutes</option>
+									<select name="command_cooldown">
+										<option value="0" <%= !configData.command_cooldown ? "selected" : "" %>>None</option>
+										<option value="2000" <%= configData.command_cooldown==2000 ? "selected" : "" %>>2 seconds</option>
+	                                    <option value="3000" <%= configData.command_cooldown==3000 ? "selected" : "" %>>3 seconds</option>
+	                                    <option value="5000" <%= configData.command_cooldown==5000 ? "selected" : "" %>>5 seconds</option>
+	                                    <option value="10000" <%= configData.command_cooldown==10000 ? "selected" : "" %>>10 seconds</option>
+	                                    <option value="15000" <%= configData.command_cooldown==15000 ? "selected" : "" %>>15 seconds</option>
+	                                    <option value="30000" <%= configData.command_cooldown==30000 ? "selected" : "" %>>30 seconds</option>
+	                                    <option value="45000" <%= configData.command_cooldown==45000 ? "selected" : "" %>>45 seconds</option>
+	                                    <option value="60000" <%= configData.command_cooldown==60000 ? "selected" : "" %>>1 minute</option>
+	                                    <option value="120000" <%= configData.command_cooldown==120000 ? "selected" : "" %>>2 minutes</option>
 									</select>
 								</span>
 								<span class="help">During this time after the use of any command, users won't be able to use other commands in the channel. Does not apply to admins. Can be overridden per-channel by the <code><%= configData.command_prefix %>cool</code> command.</span>
-							</p>
 							</p>
 							<br>
 							<h4 class="subtitle is-4">
@@ -76,7 +75,14 @@
 								<input name="max_count" class="input" type="number" value="<%= configData.command_fetch_properties.max_count %>" min="5" max="25">
 							</p>
 							<br>
+							<% var formButtonsUnsaved = false; %>
 							<% include ../partials/form-buttons %>
+							<div id="form-buttons" style="display:none;background-color:#f5f7fa;position: fixed;padding: 20px;left: 50%;transform: translate(-50%, 0%);bottom: 0px;z-index: 100;width: 100%;">
+								<div class="container">
+									<% var formButtonsUnsaved = true; %>
+									<% include ../partials/form-buttons %>
+								</div>
+							</div>
 						</form>
 					</div>
 				</div>

@@ -1,15 +1,19 @@
-<div class="control is-grouped">
-<button id="form-submit" type="submit" class="button is-primary" value="Submit" onclick="saveFormState();">
-	<span class="icon">
-        <i class="fa fa-check"></i>
-    </span>
-    <span>Save</span>
-</button>
-&nbsp;&nbsp;
-<button id="form-reset" type="reset" class="button is-danger is-outlined" value="Reset">
-    <span>Reset</span>
-	<span class="icon">
-        <i class="fa fa-times"></i>
-    </span>
-</button>
+<div class="control is-horizontal is-grouped">
+	<% if(formButtonsUnsaved) { %>
+		There are unsaved changes on this page.
+		&nbsp;
+	<% } %>
+	<button id="form-submit" type="submit" class="button is-primary<%= formButtonsUnsaved ? ' is-small' : '' %>" value="Submit" onclick="saveFormState();">
+		<span class="icon<%= formButtonsUnsaved ? ' is-small' : '' %>">
+	        <i class="fa fa-check"></i>
+	    </span>
+	    <span>Save</span>
+	</button>
+	&nbsp;&nbsp;
+	<a id="form-reset" class="button is-danger is-outlined<%= formButtonsUnsaved ? ' is-small' : '' %>" onclick="saveFormState();window.location.reload();">
+	    <span>Reset</span>
+		<span class="icon<%= formButtonsUnsaved ? ' is-small' : '' %>">
+	        <i class="fa fa-times"></i>
+	    </span>
+	</a>
 </div>

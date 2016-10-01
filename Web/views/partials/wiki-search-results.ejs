@@ -1,9 +1,12 @@
-<% if(wikiResults.length>0) { %>
-	<% for(var i=0; i<wikiResults.length; i++) { %>
+<% if(searchResults.length>0) { %>
+	<% for(var i=0; i<searchResults.length; i++) { %>
 		<div class="box">
-			<a class="title is-3" href="/wiki?page=<%= wikiResults[i].pageTitle %>"><%= wikiResults[i].pageTitle %></a>
+			<a class="title is-3" href="/wiki?page=<%= searchResults[i].title %>">
+				<%= searchResults[i].title %>
+			</a>
+			<br><br>
 			<div class="content">
-				<%- wikiResults[i].matchText %>
+				<%- searchResults[i].matchText %>
 			</div>
 		</div>
 	<% } %>
@@ -17,7 +20,7 @@
 		</div>
 		<div class="message-body">
 			There aren't any wiki pages that matched your search. 
-			<a class="button is-small" href="javascript:loadPage('Home');">
+			<a class="button is-small" href="/wiki?page=Home">
 				<span class="icon is-small">
 					<i class="fa fa-chevron-left"></i>
 				</span>

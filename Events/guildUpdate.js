@@ -1,33 +1,33 @@
 // Server details updated (name, icon, etc.)
-module.exports = (bot, db, winston, oldsvr, newsvr) => {
+module.exports = (bot, db, config, winston, svr, oldsvrdata) => {
 	// Get server data
-	db.servers.findOne({_id: oldsvr.id}, (err, serverDocument) => {
+	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(!err && serverDocument) {
 			if(serverDocument.config.moderation.isEnabled) {
 				// Send server_name_updated_message if necessary
-				if(oldsvr.name!=newsvr.name && serverDocument.config.moderation.status_messages.server_name_updated.isEnabled) {
-					winston.info("Name of server '" + oldsvr.name + "' changed to '" + newsvr.name + "'", {svrid: oldsvr.id});
-					var ch = oldsvr.channels.find("id", serverDocument.config.moderation.status_messages.server_name_updated.channel_id);
+				if(oldsvr.name!=svr.name && serverDocument.config.moderation.status_messages.server_name_updated.isEnabled) {
+					winston.info("Name of server '" + oldsvr.name + "' changed to '" + svr.name + "'", {svrid: svr.id});
+					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_name_updated.channel_id);
 					if(ch) {
-						ch.sendMessage("Server name changed from `" + oldsvr.name + "` to `" + newsvr.name + "`");
+						ch.createMessage("Server name changed from `" + oldsvr.name + "` to `" + svr.name + "`");
 					}
 				}
 
 				// Send server_icon_updated_message if necessary
-				if(oldsvr.icon!=newsvr.icon && serverDocument.config.moderation.status_messages.server_icon_updated_message.isEnabled) {
-					winston.info("Icon of server '" + oldsvr.name + "' changed from '" + oldsvr.icon + "' to '" + newsvr.icon + "'", {svrid: oldsvr.id});
-					var ch = oldsvr.channels.find("id", serverDocument.config.moderation.status_messages.server_icon_updated_message.channel_id);
+				if(oldsvr.icon!=svr.icon && serverDocument.config.moderation.status_messages.server_icon_updated_message.isEnabled) {
+					winston.info("Icon of server '" + oldsvr.name + "' changed from '" + oldsvr.icon + "' to '" + svr.icon + "'", {svrid: svr.id});
+					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_icon_updated_message.channel_id);
 					if(ch) {
-						ch.sendMessage("Server icon changed from `" + (oldsvr.iconURL || "<no icon>") + "` to `" + (newsvr.iconURL || "<no icon>") + "`");
+						ch.createMessage("Server icon changed from `" + (oldsvr.icon ? ("https://cdn.discordapp.com/icons/" + svr.id + "/" + oldsvr.icon + ".jpg") : "<no icon>") + "` to `" + (svr.iconURL || "<no icon>") + "`");
 					}
 				}
 
 				// Send server_region_updated_message if necessary
-				if(oldsvr.region!=newsvr.region && serverDocument.config.moderation.status_messages.server_region_updated_message.isEnabled) {
-					winston.info("Region of server '" + oldsvr.name + "' changed from " + oldsvr.region + " to " + newsvr.region, {svrid: oldsvr.id});
-					var ch = oldsvr.channels.find("id", serverDocument.config.moderation.status_messages.server_region_updated_message.channel_id);
+				if(oldsvr.region!=svr.region && serverDocument.config.moderation.status_messages.server_region_updated_message.isEnabled) {
+					winston.info("Region of server '" + oldsvr.name + "' changed from " + oldsvr.region + " to " + svr.region, {svrid: svr.id});
+					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_region_updated_message.channel_id);
 					if(ch) {
-						ch.sendMessage("Server region changed from " + getRegionString(oldsvr.region) + " to " + getRegionString(newsvr.region));
+						ch.createMessage("Server region changed from " + getRegionString(oldsvr.region) + " to " + getRegionString(svr.region));
 					}
 
 					// Format region string
@@ -66,7 +66,7 @@ module.exports = (bot, db, winston, oldsvr, newsvr) => {
 				}
 			}
 		} else {
-			winston.error("Failed to find server data for serverUpdated", {svrid: oldsvr.id}, err);
+			winston.error("Failed to find server data for serverUpdated", {svrid: svr.id}, err);
 		}
 	});
 };

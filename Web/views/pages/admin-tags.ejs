@@ -23,14 +23,25 @@
 		}
 
 		if(newTagName.val() && newTagContent.val()) {
-			saveFormState();
-			$("#form").submit();
+			$.ajax({
+				type: "POST",
+				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				data: {
+					"new-name": newTagName.val(),
+					"new-type": newTagType.val(),
+					"new-content": newTagContent.val()
+				},
+				success: function() {
+					saveFormState();
+					$("#form").submit();
+				}
+			});
 		}
 	}
 	</script>
 </head>
 <body onload="loadBackground();saveFormState();">
-	<% include ../partials/admin-header %>
+	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
@@ -57,53 +68,53 @@
 							</h4>
 							<% var commandData = configData.commands.tag;commandData.name = "tag";commandData.description = commandDescriptions.tag; %>
 							<% include ../partials/admin-command-item %>
-							<% if(configData.commands.tag.isEnabled) { %>
+							<span class="tag-options<% configData.commands.tag.isEnabled ? '' : ' is-hidden' %>">
 								<p class="control">
 									List all tags: 
 									<span class="select is-small">
-										<select name="listIsAdminOnly" value="<%= configData.tags.listIsAdminOnly ? "true" : "false" %>">
-											<option value="false">@everyone</option>
-											<option value="true">Admin-only</option>
+										<select name="listIsAdminOnly">
+											<option value="false" <%= configData.tags.listIsAdminOnly ? "" : "selected" %>>@everyone</option>
+											<option value="true" <%= configData.tags.listIsAdminOnly ? "selected" : "" %>>Admin-only</option>
 										</select>
 									</span>
 								</p>
 								<p class="control">
 									Add tags: 
 									<span class="select is-small">
-										<select name="addingIsAdminOnly" value="<%= configData.tags.addingIsAdminOnly ? "true" : "false" %>">
-											<option value="false">@everyone</option>
-											<option value="true">Admin-only</option>
+										<select name="addingIsAdminOnly">
+											<option value="false" <%= configData.tags.addingIsAdminOnly ? "" : "selected" %>>@everyone</option>
+											<option value="true" <%= configData.tags.addingIsAdminOnly ? "selected" : "" %>>Admin-only</option>
 										</select>
 									</span>
 								</p>
 								<p class="control">
 									Add tag commands: 
 									<span class="select is-small">
-										<select name="addingCommandIsAdminOnly" value="<%= configData.tags.addingCommandIsAdminOnly ? "true" : "false" %>">
-											<option value="false">@everyone</option>
-											<option value="true">Admin-only</option>
+										<select name="addingCommandIsAdminOnly">
+											<option value="false" <%= configData.tags.addingCommandIsAdminOnly ? "" : "selected" %>>@everyone</option>
+											<option value="true" <%= configData.tags.addingCommandIsAdminOnly ? "selected" : "" %>>Admin-only</option>
 										</select>
 									</span>
 								</p>
 								<p class="control">
 									Remove tags: 
 									<span class="select is-small">
-										<select name="removingIsAdminOnly" value="<%= configData.tags.removingIsAdminOnly ? "true" : "false" %>">
-											<option value="false">@everyone</option>
-											<option value="true">Admin-only</option>
+										<select name="removingIsAdminOnly">
+											<option value="false" <%= configData.tags.removingIsAdminOnly ? "" : "selected" %>>@everyone</option>
+											<option value="true" <%= configData.tags.removingIsAdminOnly ? "selected" : "" %>>Admin-only</option>
 										</select>
 									</span>
 								</p>
 								<p class="control">
 									Remove tag commands: 
 									<span class="select is-small">
-										<select name="removingCommandIsAdminOnly" value="<%= configData.tags.removingCommandIsAdminOnly ? "true" : "false" %>">
-											<option value="false">@everyone</option>
-											<option value="true">Admin-only</option>
+										<select name="removingCommandIsAdminOnly">
+											<option value="false" <%= configData.tags.removingCommandIsAdminOnly ? "" : "selected" %>>@everyone</option>
+											<option value="true" <%= configData.tags.removingCommandIsAdminOnly ? "selected" : "" %>>Admin-only</option>
 										</select>
 									</span>
 								</p>
-							<% } %>
+							</span>
 							<br>
 							<h4 class="subtitle is-4">
 								Tag List
@@ -175,7 +186,7 @@
 							</div>
 							<div class="control is-grouped">
 								<p class="control is-expanded">
-									<input id="new-tag-name" class="input" type="text" minlength="1" maxlength="200" placeholder="Name">
+									<input id="new-tag-name" class="input" type="text" minlength="1" maxlength="200" placeholder="Name" onkeypress="return event.keyCode != 13;">
 								</p>
 								<p class="control">
 									<span class="select">
@@ -202,7 +213,14 @@
 								</div>
 							</div>
 							<br>
+							<% var formButtonsUnsaved = false; %>
 							<% include ../partials/form-buttons %>
+							<div id="form-buttons" style="display:none;background-color:#f5f7fa;position: fixed;padding: 20px;left: 50%;transform: translate(-50%, 0%);bottom: 0px;z-index: 100;width: 100%;">
+								<div class="container">
+									<% var formButtonsUnsaved = true; %>
+									<% include ../partials/form-buttons %>
+								</div>
+							</div>
 						</form>
 					</div>
 				</div>

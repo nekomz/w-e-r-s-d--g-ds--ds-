@@ -2,7 +2,7 @@
 module.exports = (bot, winston, svr, motd) => {
 	function sendMOTD() {
 		if(motd.isEnabled) {
-			var ch = svr.channels.find("id", motd.channel);
+			var ch = svr.channels.get(motd.channel_id);
 			if(ch) {
 				motd.last_run = Date.now();
 				motd.save(err => {
@@ -10,7 +10,7 @@ module.exports = (bot, winston, svr, motd) => {
 						winston.error("Failed to save message of the day data", {svrid: svr.id}, err);
 					}
 				});
-				ch.sendMessage(motd.message_content);
+				ch.createMessage(motd.message_content);
 			}
 			setTimeout(sendMOTD, motd.interval);
 		}

@@ -2,7 +2,7 @@
     <nav class="nav">
         <div class="container">
             <div class="nav-left">
-                <a class="nav-item is-brand title is-5 is-active" href="#" style="font-family: Montserrat;">
+                <a class="nav-item is-brand title is-5 is-active" href="http://add.awesomebot.xyz" target="_blank" style="font-family: Montserrat;">
                     <img src="/img/icon.png" style="border-radius: 100%;">
                     &nbsp;
                     AwesomeBot
@@ -16,61 +16,65 @@
             </span>
 
             <div id="nav-menu" class="nav-right nav-menu">
-                <a class="nav-item is-active" href="/">
-                    <span class="icon">
+                <a id="nav-" class="nav-item is-active" href="/">
+                    <span class="icon is-small">
                         <i class="fa fa-home"></i>
                     </span>
                     &nbsp;
                     <span>Home</span>
                 </a>
-                <a class="nav-item is-active" href="/activity">
-                    <span class="icon">
+                <a id="nav-activity" class="nav-item is-active" href="/activity">
+                    <span class="icon is-small">
                         <i class="fa fa-comments"></i>
                     </span>
                     &nbsp;
                     <span>Activity</span>
                 </a>
-                <a class="nav-item is-active" href="/wiki">
-                    <span class="icon">
+                <a id="nav-extensions" class="nav-item is-active" href="/extensions">
+                    <span class="icon is-small">
+                        <i class="fa fa-bolt"></i>
+                    </span>
+                    &nbsp;
+                    <span>Extensions</span>
+                </a>
+                <a id="nav-wiki" class="nav-item is-active" href="/wiki">
+                    <span class="icon is-small">
                         <i class="fa fa-book"></i>
                     </span>
                     &nbsp;
                     <span>Wiki</span>
                 </a>
-                <a class="nav-item is-active" href="http://status.awesomebot.xyz">
-                    <span class="icon">
-                        <i class="fa fa-check"></i>
-                    </span>
-                    &nbsp;
-                    <span>Status</span>
-                </a>
-
-                <span class="nav-item">
-                    <a class="button is-primary" href="http://add.awesomebot.xyz">
-                        <span class="icon">
-                            <i class="fa fa-plus"></i>
-                        </span>
-                        <span>Add to Server</span>
+                
+                <% if(authUser) { %>
+                    <a id="nav-dashboard" class="nav-item is-active" href="/dashboard" title="Go to dashboard">
+                        <img class="image is-16x16" src="<%= authUser.avatar %>" style="border-radius: 100%;" alt="<%= authUser.id %>">
+                        &nbsp;
+                        <span><%= authUser.username %></span>
                     </a>
-                </span>
-
-                <span class="nav-item">
-                    <% if(authUser) { %>
-                        <a class="button is-white" href="/dashboard" title="Go to dashboard">
-                            <img class="image is-16x16" src="<%= authUser.avatar %>" style="border-radius: 100%;" alt="<%= authUser.id %>">
-                            &nbsp;
-                            <span><%= authUser.username %></span>
+                <% } else { %>
+                    <p class="nav-item control has-addons">
+                        <a class="button is-white is-outlined" href="http://add.awesomebot.xyz">
+                            <span class="icon is-small">
+                                <i class="fa fa-plus"></i>
+                            </span>
+                            <span>Add</span>
                         </a>
-                    <% } else { %>
-                        <a class="button is-white is-outlined" href="/login">
-                            <span class="icon">
+                        <a class="button is-white is-outlined" href="/login" style="margin-left: 0px;">
+                            <span class="icon is-small">
                                 <i class="fa fa-sign-in"></i>
                             </span>
                             <span>Login</span>
                         </a>
-                    <% } %>
-                </span>
+                    </p>
+                <% } %>
             </div>
+            <script>
+            var currentPage = window.location.pathname.split("/")[1];
+            var currentNavItem = $("#nav-" + currentPage);
+            if(currentNavItem) {
+                currentNavItem.addClass("is-tab");
+            }
+            </script>
         </div>
     </nav>
 </header>

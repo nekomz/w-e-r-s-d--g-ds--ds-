@@ -18,6 +18,5 @@ module.exports = new mongoose.Schema({
 	last_seen: Date,
 	profile_fields: mongoose.Schema.Types.Mixed,
     profile_background_image: {type: String, default: "http://i.imgur.com/8UIlbtg.jpg"},
-	isProfilePublic: {type: Boolean, default: true},
-    isGloballyBlocked: {type: Boolean, default: false}
+	isProfilePublic: {type: Boolean, default: true}
 });

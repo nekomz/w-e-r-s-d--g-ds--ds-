@@ -1,6 +1,6 @@
 const unirest = require("unirest");
 
-module.exports = (bot, winston, auth) => {
+module.exports = (winston, auth, svrCount, botId) => {
     // Send server count to Carbonitex bot list
     if(auth.tokens.carbon_key) {
         unirest.post("https://www.carbonitex.net/discord/data/botdata.php").headers({
@@ -8,10 +8,25 @@ module.exports = (bot, winston, auth) => {
             "Content-Type": "application/json"
         }).send({
             "key": auth.tokens.carbon_key,
-            "servercount": bot.guilds.length
+            "servercount": svrCount
         }).end(res => {
-            if(res.status==200) {
-                winston("info", "Successfully POSTed updated server count to Carbonitex");
+            if(res.status!=200) {
+                winston.error("Failed to POST to Carbonitex");
+            }
+        });
+    }
+
+    // Send server account to DBots
+    if(auth.tokens.discordbots_key) {
+        unirest.post("https://bots.discord.pw/api/bots/" + botId + "/stats").headers({
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": auth.tokens.discordbots_key
+        }).send({
+            "server_count": svrCount
+        }).end(res => {
+            if(res.status!=200) {
+                winston.error("Failed to POST to DBots");
             }
         });
     }

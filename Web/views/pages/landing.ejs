@@ -3,20 +3,45 @@
 <head>
 	<title>AwesomeBot: the best Discord bot!</title>
 	<% include ../partials/head %>
+
+	<style type="text/css">
+	@media screen and (max-width: 768px) {
+		#awesomebot-title {
+			font-size: 48px;
+		}
+		#awesomebot-subtitle {
+			font-size: 30px;
+		}
+		#awesomebot-discord {
+			height: 32px;
+		}
+	}
+	@media screen and (min-width: 769px) {
+		#awesomebot-title {
+			font-size: 96px;
+		}
+		#awesomebot-subtitle {
+			font-size: 40px;
+		}
+		#awesomebot-discord {
+			height: 42px;
+		}
+	}
+	</style>
 </head>
 <body onload="loadBackground();">
-	<section id="header" class="hero is-primary is-large is-bold" style="background: url('/img/header-bg.jpg'); background-size: cover;" ondblclick="loadBackground();">
+	<section id="header" class="hero is-primary is-fullheight is-bold" style="background: url('/img/header-bg.jpg'); background-size: cover;" ondblclick="loadBackground();">
 		<div class="hero-head">
 			<% include ../partials/header %>
 		</div>
 		<div class="hero-body">
 			<div class="container has-text-centered">
 				<img src="/img/icon.png" style="border-radius: 100%;width:200px;">
-				<h1 class="title is-1" style="font-family: Montserrat;font-size:96px;">
+				<h1 id="awesomebot-title" class="title is-1" style="font-family: Montserrat;">
 					AwesomeBot
 				</h1>
-				<h2 class="title is-2">
-					The best <img src="/img/discord-logo.png" style="height: 42px;vertical-align: top;"> bot!
+				<h2 id="awesomebot-subtitle" class="title is-2">
+					The best <img id="awesomebot-discord" src="/img/discord-logo.png" style="vertical-align: top;"> bot!
 				</h2>
 				<br>
 
@@ -29,11 +54,16 @@
 					</a>
 				</p>
 				<br>
+
+				<% if(bannerMessage) { %>
+					<br><br>
+					<h3 class="title is-5"><%- bannerMessage %></h3>
+				<% } %>
 			</div>
 		</div>
 		<div class="hero-foot">
 			<nav class="nav">
-				<div class="container">
+				<div class="container" style="overflow-x: scroll;">
 					<div class="nav-center">
 						<a class="nav-item is-tab " href="#about">
 							About
@@ -191,7 +221,7 @@
 				</nav>
 				<br><br>
 				<div class="has-text-centered">
-					<img src="/img/admin-console.png">
+					<img src="/img/admin-console.png" style="border-radius: 3px;">
 				</div>
 			</div>
 		</div>
@@ -205,7 +235,7 @@
 				</h2>
 				<h3 class="subtitle is-4">
 					It's fun, easy-to-use, and feature-packed.
-					<a href="/activity#servers">
+					<a href="/activity/servers">
 						Browse servers &raquo;
 					</a>
 				</h3>

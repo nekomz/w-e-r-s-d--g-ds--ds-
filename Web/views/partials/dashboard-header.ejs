@@ -1,0 +1,32 @@
+<section id="header" class="hero is-primary is-small is-bold" style="background: url('/img/header-bg.jpg'); background-size: cover;" ondblclick="loadBackground();">
+	<div class="hero-head">
+		<% include ../partials/header %>
+	</div>
+	<div class="hero-body">
+		<div class="container has-text-centered">
+			<img src="<%= serverData.icon %>" style="border-radius: 100%;width: 128px;vertical-align: bottom;" alt="<%=serverData.id %>">
+			<br><br>
+			<h1 class="title is-1">
+				<strong><%= serverData.name %></strong> <%= serverData.isMaintainer ? "Maintainer" : "Admin" %> Console
+			</h1>
+		</div>
+	</div>
+	<div class="hero-foot">
+		<div class="container has-text-centered">
+			<a class="button is-small is-white is-outlined" href="/dashboard">
+	            <span class="icon is-small">
+	                <i class="fa fa-chevron-left"></i>
+	            </span>
+	            <span>Dashboard</span>
+	        </a>
+	        &nbsp;
+	        <a class="button is-small is-white is-outlined" target="_blank" href="/wiki?page=Configuration#<%= serverData.isMaintainer ? 'maintainer' : 'admin' %>console">
+	            <span class="icon is-small">
+	                <i class="fa fa-question-circle"></i>
+	            </span>
+	            <span>Help</span>
+	        </a>
+	        <br><br>
+		</div>
+	</div>
+</section>
