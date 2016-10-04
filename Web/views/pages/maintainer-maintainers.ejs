@@ -18,7 +18,7 @@
 		if(newMaintainerUser.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=maintainer&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=maintainer",
 				data: {
 					"new-user": newMaintainerUser.val()
 				},
@@ -30,13 +30,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();setUserAutocomplete();">
+<body onload="setUserAutocomplete();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/maintainer-menu %>
 				</div>
 				<div class="column">
@@ -54,7 +55,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=maintainer&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=maintainer" method="post">
 							<div style="overflow-x: scroll;">
 								<% if(config.maintainers.length>0) { %>
 									<table class="table">
@@ -63,7 +64,9 @@
 												<th></th>
 												<th>Username</th>
 												<th>ID</th>
-												<th></th>
+												<% if(showRemove) { %>
+													<th></th>
+												<% } %>
 											</tr>
 										</thead>
 										<tbody>
@@ -78,14 +81,16 @@
 													<td>
 														<%= config.maintainers[i].id %>
 													</td>
-													<td>
-														<button class="button is-small is-danger" name="maintainer-<%= i %>-removed">
-															<span>Remove</span>
-															<span class="icon is-small">
-																<i class="fa fa-times"></i>
-															</span>
-														</button>
-													</td>
+													<% if(showRemove) { %>
+														<td>
+															<button class="button is-small is-danger" name="maintainer-<%= i %>-removed">
+																<span>Remove</span>
+																<span class="icon is-small">
+																	<i class="fa fa-times"></i>
+																</span>
+															</button>
+														</td>
+													<% } %>
 												</tr>
 											<% } %>
 										</tbody>

@@ -4,13 +4,13 @@
 	<title><%= serverData.name %> Admin Console - AwesomeBot</title>
 	<% include ../partials/head %>
 </head>
-<body onload="loadBackground();">
+<body>
 	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -54,7 +54,7 @@
 									<span class="icon">
 					                    <i class="fa fa-comments-o"></i>
 					                </span>
-									messages today
+									message<%= messagesToday==1 ? "" : "s" %> today
 								</h2>
 							</div>
 							<% if(topCommand) { %>

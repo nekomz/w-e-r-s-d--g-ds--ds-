@@ -24,7 +24,7 @@
 		if(newRankName.val() && newRankScore.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-name": newRankName.val(),
 					"new-max_score": newRankScore.val(),
@@ -39,13 +39,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -61,7 +62,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<div style="overflow-x: scroll;">
 								<% if(configData.ranks_list.length>0) { %>
 									<table class="table">
@@ -88,10 +89,10 @@
 													<td>
 														<p class="control">
 															<span class="select is-small">
-																<select name="rank-<%= i %>-role_id" value="<%= configData.ranks_list[i].role_id %>">
+																<select name="rank-<%= i %>-role_id">
 																	<option value="">None</option>
 																	<% for(var j=0; j<roleData.length; j++) { %>
-																		<option value="<%= roleData[j].id %>"><%= roleData[j].name %></option>
+																		<option value="<%= roleData[j].id %>" <%= configData.ranks_list[i].role_id==roleData[j].id ? "selected" : "" %>><%= roleData[j].name %></option>
 																	<% } %>
 																</select>
 															</span>

@@ -12,6 +12,8 @@ module.exports = (bot, db, config, winston, msg) => {
 					channelDocument = serverDocument.channels.id(msg.channel.id);
 				}
 
+				// Decrement today's message count for server
+				serverDocument.messages_today--;
 				// Count server stats if enabled in this channel
 				if(channelDocument.isStatsEnabled) {
 					// Decrement this week's message count for member
@@ -21,7 +23,7 @@ module.exports = (bot, db, config, winston, msg) => {
 
 			            // Save changes to serverDocument
 			            serverDocument.save(err => {
-							winston.error("Failed to save server data for messageDelete", {svrid: msg.channel.guild.id}, err);
+							winston.error("Failed to save server data for messageDeleted", {svrid: msg.channel.guild.id}, err);
 						});
 			        }
 		        }
@@ -73,7 +75,7 @@ module.exports = (bot, db, config, winston, msg) => {
                 	}
 		        }
 			} else {
-				winston.error("Failed to find server data for message", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+				winston.error("Failed to find server data for messageDeleted", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
 			}
 		});
 	}	

@@ -6,13 +6,14 @@
 
 	<script src="/js/form-change-listener.js"></script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -30,7 +31,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<p class="control">
 								<label class="checkbox">
 								<input name="isShown" type="checkbox" onclick="$('#public_data-options').toggleClass('is-hidden');" <%= configData.public_data.isShown ? "checked" : "" %>>
@@ -45,16 +46,24 @@
 									</label>
 								</p>
 								<span id="server_listing-options" class="<%= configData.public_data.server_listing.isEnabled ? '' : 'is-hidden' %>">
+									<p class="control">
+										<a id="form-reset" class="button is-info" href="/activity/servers?q=<%= serverData.name %>" target="_blank">
+											<span class="icon">
+										        <i class="fa fa-info"></i>
+										    </span>
+										    <span>View Listing</span>
+										</a>
+									</p>
 									<label class="label">Category</label>
 									<p class="control">
 										<span class="select">
 											<select name="server_listing-category">
-												<option value="" <%= configData.public_data.server_listing.category=="Gaming" ? "selected" : "" %>>Gaming</option>
-												<option value="" <%= configData.public_data.server_listing.category=="Tech" ? "selected" : "" %>>Tech</option>
-												<option value="" <%= configData.public_data.server_listing.category=="Programming" ? "selected" : "" %>>Programming</option>
-												<option value="" <%= configData.public_data.server_listing.category=="Community" ? "selected" : "" %>>Community</option>
-												<option value="" <%= configData.public_data.server_listing.category=="Bots" ? "selected" : "" %>>Bots</option>
-												<option value="" <%= configData.public_data.server_listing.category=="Other" ? "selected" : "" %>>Other</option>
+												<option value="Gaming" <%= configData.public_data.server_listing.category=="Gaming" ? "selected" : "" %>>Gaming</option>
+												<option value="Tech" <%= configData.public_data.server_listing.category=="Tech" ? "selected" : "" %>>Tech</option>
+												<option value="Programming" <%= configData.public_data.server_listing.category=="Programming" ? "selected" : "" %>>Programming</option>
+												<option value="Community" <%= configData.public_data.server_listing.category=="Community" ? "selected" : "" %>>Community</option>
+												<option value="Bots" <%= configData.public_data.server_listing.category=="Bots" ? "selected" : "" %>>Bots</option>
+												<option value="Other" <%= configData.public_data.server_listing.category=="Other" ? "selected" : "" %>>Other</option>
 											</select>
 										</span>
 									</p>

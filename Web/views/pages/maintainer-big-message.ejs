@@ -4,13 +4,13 @@
 	<title>BigMessage - <%= serverData.name %> Maintainer Console</title>
 	<% include ../partials/head %>
 </head>
-<body onload="loadBackground();">
+<body>
 	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/maintainer-menu %>
 				</div>
 				<div class="column">
@@ -28,10 +28,10 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=maintainer&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=maintainer" method="post">
 							<p class="control">
-								<textarea name="message" class="textarea" placeholder="Message to send, in markdown"></textarea>
-								<span class="help">This message will be sent to <strong>all <%= serverCount %> servers</strong>, so make sure it's important!</span>
+								<textarea name="message" class="textarea" maxlength="2000" placeholder="Message to send, in markdown"></textarea>
+								<span class="help">This message will be sent to <strong>all <%= serverCount %> server<%= serverCount==1 ? "" : "s" %></strong>, so make sure it's important!</span>
 							</p>
 							<br>
 							<% var formButtonsUnsaved = false; %>

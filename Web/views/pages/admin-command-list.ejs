@@ -5,13 +5,14 @@
 	<% include ../partials/head %>
 	<script src="/js/form-change-listener.js"></script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -37,7 +38,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<% for(var i=Object.keys(configData.commands).length-1; i>=0; i--) { %>
 								<% if(["games", "messages", "music", "perms", "points", "ranks", "role", "roleinfo", "rss", "stats", "tag"].indexOf(Object.keys(configData.commands)[i])==-1) { %> 
 									<% var commandData = configData.commands[Object.keys(configData.commands)[i]];commandData.name = Object.keys(configData.commands)[i];commandData.description = commandDescriptions[Object.keys(configData.commands)[i]]; %>

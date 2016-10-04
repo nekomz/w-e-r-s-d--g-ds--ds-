@@ -5,13 +5,14 @@
 	<% include ../partials/head %>
 	<script src="/js/form-change-listener.js"></script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
-		
+	<% include ../partials/dashboard-socket-updates %>
+	
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/maintainer-menu %>
 				</div>
 				<div class="column">
@@ -29,7 +30,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=maintainer&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=maintainer" method="post">
 							<div class="columns">
 								<div class="column is-one-third">
 									<img src="<%= bot_user.avatar || 'http://placehold.it/400x400' %>" alt="<%= serverData.id %>" style="width: 100%;">

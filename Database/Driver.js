@@ -21,6 +21,9 @@ module.exports = {
 			if(!connection.models.users) {
 				connection.model("users", userSchema);
 			}
+			if(!connection.models.gallery) {
+				connection.model("gallery", modulesSchema);
+			}
 			db = connection.models;
 			callback();
 		});

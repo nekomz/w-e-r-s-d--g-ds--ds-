@@ -21,7 +21,7 @@
 		if(newMutedMember.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-member": newMutedMember.val(),
 					"new-channel_id": newMutedChannel.val()
@@ -35,13 +35,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();setUserAutocomplete('<%= serverData.id %>');">
+<body onload="saveFormState();setUserAutocomplete('<%= serverData.id %>');">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -59,7 +60,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<div style="overflow-x: scroll;">
 								<% if(muted.length>0) { %>
 									<table class="table">

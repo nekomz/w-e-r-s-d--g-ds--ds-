@@ -18,7 +18,7 @@
 		if(newStreamerName.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-name": newStreamerName.val(),
 					"new-type": newStreamerType.val()
@@ -32,13 +32,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -54,7 +55,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<% var commandData = configData.commands.streamers;commandData.name = "streamers";commandData.description = commandDescriptions.streamers; %>
 							<% include ../partials/admin-command-item %>
 							<div style="overflow-x: scroll;">

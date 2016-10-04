@@ -6,13 +6,14 @@
 
 	<script src="/js/form-change-listener.js"></script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -30,7 +31,68 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
+							<div style="overflow-x: scroll;">
+								<% if(configData.extensions.length>0) { %>
+									<table class="table">
+										<thead>
+											<tr>
+												<th>Name</th>
+												<th>ID</th>
+												<th>Type</th>
+												<th>Store Size</th>
+												<th></th>
+											</tr>
+										</thead>
+										<tbody>
+											<% for(var i=0; i<configData.extensions.length; i++) { %>
+												<tr>
+													<td>
+														<%= configData.extensions[i].name %>
+													</td>
+													<td>
+														<%= configData.extensions[i]._id %>
+													</td>
+													<td>
+														<%= configData.extensions[i].type.charAt(0).toUpperCase() + configData.extensions[i].type.slice(1) %>
+													</td>
+													<td>
+														<%= configData.extensions[i].store %> KB
+													</td>
+													<td>
+														<a class="button is-small" href="/dashboard/other/extension-builder?svrid=<%= serverData.id %>&extid=<%= configData.extensions[i]._id %>">
+															<span class="icon is-small">
+																<i class="fa fa-pencil"></i>
+															</span>
+															<span>Edit</span>
+														</a>
+														&nbsp;
+														<button class="button is-small is-danger" name="extension-<%= i %>-removed">
+															<span>Remove</span>
+															<span class="icon is-small">
+																<i class="fa fa-times"></i>
+															</span>
+														</button>
+													</td>
+												</tr>
+											<% } %>
+										</tbody>
+									</table>
+								<% } else { %>
+									<article class="message">
+										<div class="message-header">
+											<span class="icon">
+												<i class="fa fa-meh-o"></i>
+											</span>
+											<span>Nothing to see here</span>
+										</div>
+										<div class="message-body">
+											You haven't created any extensions yet. Head over to the <a href="/dashboard/other/extension-builder?svrid=<%= serverData.id %>">extension builder</a> to get started building one!
+										</div>
+									</article>
+									<br>
+								<% } %>
+							</div>
 							<div class="control is-horizontal is-grouped">
 								<a class="button" href="/dashboard/other/extension-builder?svrid=<%= serverData.id %>">
 									<span class="icon">
@@ -45,15 +107,6 @@
 								    </span>
 								    <span>Discover extensions</span>
 								</a>
-							</div>
-							<br>
-							<% var formButtonsUnsaved = false; %>
-							<% include ../partials/form-buttons %>
-							<div id="form-buttons" style="display:none;background-color:#f5f7fa;position: fixed;padding: 20px;left: 50%;transform: translate(-50%, 0%);bottom: 0px;z-index: 100;width: 100%;">
-								<div class="container">
-									<% var formButtonsUnsaved = true; %>
-									<% include ../partials/form-buttons %>
-								</div>
 							</div>
 						</form>
 					</div>

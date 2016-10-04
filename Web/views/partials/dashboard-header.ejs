@@ -1,12 +1,11 @@
-<section id="header" class="hero is-primary is-small is-bold" style="background: url('/img/header-bg.jpg'); background-size: cover;" ondblclick="loadBackground();">
+<section id="header" class="hero is-primary is-small is-bold" style="background: url('/header-image');background-size: cover;" ondblclick="">
 	<div class="hero-head">
 		<% include ../partials/header %>
 	</div>
 	<div class="hero-body">
 		<div class="container has-text-centered">
-			<img src="<%= serverData.icon %>" style="border-radius: 100%;width: 128px;vertical-align: bottom;" alt="<%=serverData.id %>">
-			<br><br>
-			<h1 class="title is-1">
+			<h1 id="dashboard-title" class="title is-1">
+				<img id="dashboard-icon" src="<%= serverData.icon %>" style="border-radius: 100%;width: 48px;vertical-align: bottom;" alt="<%=serverData.id %>"> 
 				<strong><%= serverData.name %></strong> <%= serverData.isMaintainer ? "Maintainer" : "Admin" %> Console
 			</h1>
 		</div>
@@ -19,6 +18,9 @@
 	            </span>
 	            <span>Dashboard</span>
 	        </a>
+	        &nbsp;
+	        <% var menuToggleButtonSize = "is-small"; %>
+	        <% include ../partials/menu-toggle %>
 	        &nbsp;
 	        <a class="button is-small is-white is-outlined" target="_blank" href="/wiki?page=Configuration#<%= serverData.isMaintainer ? 'maintainer' : 'admin' %>console">
 	            <span class="icon is-small">

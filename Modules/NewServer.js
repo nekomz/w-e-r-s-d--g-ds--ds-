@@ -136,7 +136,8 @@ module.exports = (bot, svr, serverDocument) => {
 	serverDocument.config.tag_reaction.messages.push("@user you called?", "Yo @user wassup");
 
 	// Send message to server owner about AwesomeBot
-	bot.messageBotAdmins(svr, serverDocument, "Hello! " + bot.user.username + " (that's me) has been added to " + svr.name + ", a server of yours! " + (bot.guilds.size % 1000==0 ? ("*Wow, you're server #" + bot.guilds.size + " for me!* ") : "") + "Use `" + bot.getCommandPrefix(svr, serverDocument) + "help` to learn more or check out https://awesomebot.xyz/ :slight_smile: :tada:");
+	// TODO: uncomment this after testing
+	//bot.messageBotAdmins(svr, serverDocument, "Hello! " + bot.user.username + " (that's me) has been added to " + svr.name + ", a server of yours! " + (bot.guilds.size % 1000==0 ? ("*Wow, you're server #" + bot.guilds.size + " for me!* ") : "") + "Use `" + bot.getCommandPrefix(svr, serverDocument) + "help` to learn more or check out https://awesomebot.xyz/ :slight_smile: :tada:");
 
 	return serverDocument;
 };

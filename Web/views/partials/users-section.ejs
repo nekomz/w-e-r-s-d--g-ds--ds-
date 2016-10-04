@@ -1,3 +1,15 @@
+<style type="text/css">
+@media screen and (max-width: 768px) {
+	.profile-image {
+		width: 72px !important;
+	}
+}
+@media screen and (min-width: 769px) {
+	.profile-image {
+		width: 256px;
+	}
+}
+</style>
 <script>
 function searchUsers(query) {
 	window.location.href = "/activity/users?q=" + encodeURI(query.replaceAll("#", "----"));
@@ -32,7 +44,7 @@ $.getJSON("/userlist", function(data) {
 				<div class="box">
 					<article class="media">
 						<div class="media-left">
-			    			<img class="image" style="width: 256px;" src="<%= data.userProfile.avatar %>" alt="<%= data.userProfile.id %>">
+			    			<img class="image profile-image" style="width: 256px;" src="<%= data.userProfile.avatar %>" alt="<%= data.userProfile.id %>">
 		    			</div>
 			    		<div class="media-content">
 							<h2 class="title">
@@ -40,7 +52,7 @@ $.getJSON("/userlist", function(data) {
 								<span class="tag is-medium <%= data.userProfile.statusColor %>"><%= data.userProfile.status.charAt(0).toUpperCase() + data.userProfile.status.slice(1) %></span>
 							</h2>
 							<h5 class="subtitle">
-								Joined Discord <span title="<%= data.userProfile.rawAccountAge %>"><%= data.userProfile.roundedAccountAge %> days ago</span>
+								Joined Discord <span title="<%= data.userProfile.rawAccountAge %>"><%= data.userProfile.roundedAccountAge %> day<%= data.userProfile.roundedAccountAge==1 ? "" : "s" %> ago</span>
 							</h5>
 							<div class="content">
 								<h4 class="title is-3">
@@ -69,7 +81,7 @@ $.getJSON("/userlist", function(data) {
 									<span class="icon is-medium">
 										<i class="fa fa-list-ul"></i>
 									</span>
-									<span><strong><%= data.userProfile.mutualServerCount %></strong> servers with AwesomeBot</span>
+									<span><strong><%= data.userProfile.mutualServerCount %></strong> server<%= data.userProfile.mutualServerCount==1 ? "" : "s" %> with AwesomeBot</span>
 									<% if(data.userProfile.mutualServers) { %>
 										</span>
 										<div id="mutual-servers-modal" class="modal">
@@ -124,7 +136,7 @@ $.getJSON("/userlist", function(data) {
 									<span class="icon is-medium">
 										<i class="fa fa-star"></i>
 									</span>
-									<span>Has <strong><%= data.userProfile.points %></strong> points</span>
+									<span>Has <strong><%= data.userProfile.points %></strong> point<%= data.userProfile.points==1 ? "" : "s" %></span>
 									<br>
 									<% if(data.userProfile.pastNames && data.userProfile.pastNames.length>0) { %>
 										<span class="modal-button" data-target="#past-names-modal">
@@ -132,7 +144,7 @@ $.getJSON("/userlist", function(data) {
 									<span class="icon is-medium">
 										<i class="fa fa-font"></i>
 									</span>
-									<span><strong><%= data.userProfile.pastNameCount %></strong> past names</span>
+									<span><strong><%= data.userProfile.pastNameCount %></strong> past name<%= data.userProfile.pastNameCount==1 ? "" : "s" %></span>
 									<% if(data.userProfile.pastNames && data.userProfile.pastNames.length>0) { %>
 										</span>
 										<div id="past-names-modal" class="modal">
@@ -175,35 +187,35 @@ $.getJSON("/userlist", function(data) {
 								<span class="icon is-medium">
 									<i class="fa fa-star"></i>
 								</span>
-								<span><strong><%= data.totalPoints %></strong> points total</span>
+								<span><strong><%= data.totalPoints %></strong> point<%= data.totalPoints==1 ? "" : "s" %> total</span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-user"></i>
 								</span>
-								<span><strong><%= data.publicProfilesCount %></strong> public user profiles</span>
+								<span><strong><%= data.publicProfilesCount %></strong> public user profile<%= data.publicProfilesCount==1 ? "" : "s" %></span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-bell"></i>
 								</span>
-								<span><strong><%= data.reminderCount %></strong> reminders set</span>
+								<span><strong><%= data.reminderCount %></strong> reminder<%= data.reminderCount==1 ? "" : "s" %> set</span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-info-circle"></i>
 								</span>
-								<span><strong><%= data.profileFieldCount %></strong> profile fields</span>
+								<span><strong><%= data.profileFieldCount %></strong> profile field<%= data.profileFieldCount==1 ? "" : "s" %></span>
 							</h2>
 							<h2 class="title">
 								<span class="icon is-medium">
 									<i class="fa fa-keyboard-o"></i>
 								</span>
-								<span><strong><%= data.afkUserCount %></strong> users AFK right now</span>
+								<span><strong><%= data.afkUserCount %></strong> user<%= data.afkUserCount==1 ? "" : "s" %> AFK right now</span>
 							</h2>
 						</div>
 				    	<div class="media-right">
-				    		<img class="image" style="width: 256px;border-radius: 100%;" src="/img/profile.png">
+				    		<img class="image profile-image" style="width: 256px;border-radius: 100%;" src="/img/profile.png">
 			    		</div>
 					</article>
 				</div>

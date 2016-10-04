@@ -6,10 +6,6 @@ module.exports = (db, auth, config) => {
 	process.setMaxListeners(0);
 	var bot = new eris.Client(auth.platform.login_token, {
 		disableEvents: {
-			CHANNEL_CREATE: true,
-			CHANNEL_UPDATE: true,
-			GUILD_ROLE_CREATE: true,
-			GUILD_ROLE_UPDATE: true,
 			MESSAGE_DELETE_BULK: true,
 			TYPING_START: true
 		},
@@ -95,7 +91,7 @@ module.exports = (db, auth, config) => {
 
 	// Gets the name of a user on a server in accordance with config
 	bot.getName = (svr, serverDocument, member, ignoreNick) => {
-		return cleanName(((serverDocument.config.name_display.use_nick && !ignoreNick) ? (member.nickname || member.user.username) : member.user.username) + (serverDocument.config.name_display.show_discriminator ? ("#" + member.user.discriminator) : ""));
+		return cleanName(((serverDocument.config.name_display.use_nick && !ignoreNick) ? (member.nick || member.user.username) : member.user.username) + (serverDocument.config.name_display.show_discriminator ? ("#" + member.user.discriminator) : ""));
 	};
 
 	// Finds a user on a server (by username, ID, etc.)
@@ -330,7 +326,7 @@ module.exports = (db, auth, config) => {
 
 	// Check if user has a bot admin role on a server
 	bot.getUserBotAdmin = (svr, serverDocument, member) => {
-		if(svr.ownerID==member.id) {
+		if(svr.ownerID==member.id || config.maintainers.indexOf(member.id)>-1) {
 			return 3;
 		}
 		var adminLevel = 0;
@@ -359,11 +355,11 @@ module.exports = (db, auth, config) => {
 
 	// Check if a user is muted on a server
 	bot.isMuted = (ch, member) => {
-		return !ch.permissionsOf(member.id).has("createMessages");
+		return !ch.permissionsOf(member.id).has("sendMessages");
 	};
 
 	// Mute a member of a server in a channel
-	bot.muteMember = (ch, member, callback) => { // TODO: update the rest of this for eris
+	bot.muteMember = (ch, member, callback) => {
 		if(!bot.isMuted(ch, member) && ch.type==0) {
 			ch.editPermission(member.id, null, 2048, "member").then(callback);
 		}
@@ -385,8 +381,8 @@ function cleanName(str) {
 	return ((str.indexOf("everyone")==0 || str.indexOf("here")==0) ? ("\u200b" + str) : str).replaceAll("@everyone", "@\u200beveryone").replaceAll("@here", "@\u200bhere").replaceAll("<@", "<@\u200b");
 };
 
-Object.defineProperty(String.prototype, "replaceAll", {
-    value(target, replacement) {
-        return this.split(target).join(target);
-    }
+Object.assign(String.prototype, {
+	replaceAll(target, replacement) {
+		return this.split(target).join(replacement);
+	}
 });

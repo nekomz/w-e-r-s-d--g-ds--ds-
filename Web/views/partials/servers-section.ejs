@@ -144,7 +144,7 @@ function switchLayout(type) {
 									<img src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>">
 								</figure>
 							</div>
-							<div class="card-content" style="max-height: 500px;overflow-y: scroll;">
+							<div class="card-content" style="max-height: 400px;overflow-y: scroll;">
 								<h3 class="title is-3"><%= data.serverData[i].name %></h3>
 								<h5 class="subtitle is-5"><%= data.serverData[i].category %></h5>
 								<div class="level is-mobile">
@@ -153,7 +153,7 @@ function switchLayout(type) {
 										<p class="title"><%= data.serverData[i].members %></p>
 									</div>
 									<div class="level-item has-text-centered">
-										<p class="heading">Messages</p>
+										<p class="heading">Message<%= data.serverData[i].messages==1 ? "" : "s" %></p>
 										<p class="title"><%= data.serverData[i].messages %></p>
 									</div>
 									<div class="level-item has-text-centered">
@@ -176,7 +176,7 @@ function switchLayout(type) {
 
 								<div class="content">
 								<% if(data.serverData[i].description) { %>
-									<%- serverData[i].description %>
+									<%- data.serverData[i].description %>
 								<% } %>
 								</div>
 
@@ -194,7 +194,7 @@ function switchLayout(type) {
 						</div>
 					</div>
 
-					<% if(i % 4==3 && i!=serverData.length-1 && i!=0) { %>
+					<% if(i % 4==3 && i!=data.serverData.length-1 && i!=0) { %>
 						</div>
 						<div class="columns">
 					<% } %>
@@ -250,11 +250,10 @@ function switchLayout(type) {
 														<%= data.serverData[i].name %> <small class="subtitle is-5"><%= data.serverData[i].category %></small>
 													</h4>
 													<h6 class="subtitle is-6">
-														Owned by @<%= data.serverData[i].owner.username %>, created <%= data.serverData[i].created %> days ago
+														Owned by @<%= data.serverData[i].owner.username %>, created <%= data.serverData[i].created %> day<%= data.serverData[i].created==1 ? "" : "s" %> ago
 													</h6>
 													<% if(data.serverData[i].description) { %>
-														<%- serverData[i].description %>
-														<br>
+														<%- data.serverData[i].description %>
 													<% } %>
 													Use <code><%= data.serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= data.serverData[i].name %>
 												</div>

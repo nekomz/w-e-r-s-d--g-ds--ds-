@@ -26,7 +26,7 @@
 		if(newTranslatedMember.val() && newTranslatedLanguage.val() && Array.prototype.slice.call(document.getElementById("new-translated-enabled_channel_ids").querySelectorAll('input[type="checkbox"]')).some(x => x.checked)) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-member": newTranslatedMember.val(),
 					"new-source_language": newTranslatedLanguage.val(),
@@ -43,13 +43,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();setUserAutocomplete('<%= serverData.id %>');">
+<body onload="saveFormState();setUserAutocomplete('<%= serverData.id %>');">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -65,7 +66,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<div style="overflow-x: scroll;">
 								<% if(configData.translated_messages.length>0) { %>
 									<table class="table">
@@ -93,7 +94,7 @@
 													<td>
 														<% for(var j=0; j<channelData.length; j++) { %>
 															<label class="checkbox">
-															<input name="translated_messages-<%= i %>-enabled_channel_ids-<%= channelData[j].id %>" type="checkbox">
+															<input name="translated_messages-<%= i %>-enabled_channel_ids-<%= channelData[j].id %>" type="checkbox" <%= configData.translated_messages[i].enabled_channel_ids.indexOf(channelData[j].id)>-1 ? "checked" : "" %>>
 																#<%= channelData[j].name %>
 															</label>
 															<br>

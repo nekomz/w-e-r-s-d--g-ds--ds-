@@ -31,14 +31,13 @@ module.exports = {
 	custom_colors: {type: Boolean, default: false},
 	custom_roles: [String],
 	delete_command_messages: {type: Boolean, default: false},
-	extensions: [require("./modulesSchema.js")],
 	list_data: [new mongoose.Schema({
 		content: {type: String, required: true},
 		isCompleted: {type: Boolean, default: false, required: true}
 	})],
 	message_of_the_day: {
 		isEnabled: {type: Boolean, default: false},
-		message_content: String,
+		message_content: {type: String, maxlength: 2000},
 		channel_id: String,
 		interval: {type: Number, default: 86400000, min: 300000, max: 172800000},
 		last_run: Date
@@ -230,9 +229,9 @@ module.exports = {
 		removingCommandIsAdminOnly: {type: Boolean, default: true}
 	},
 	translated_messages: [new mongoose.Schema({
-		_id: {type: String, required: true},
+		_id: {type: String, required: true, maxlength: 50},
 		source_language: {type: String, required: true, minlength: 2, maxlength: 6},
-		enabled_channel_ids: {type: [String], required: true},
+		enabled_channel_ids: [String],
 	})],
 	trivia_sets: [new mongoose.Schema({
 		_id: String,

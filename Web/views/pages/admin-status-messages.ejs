@@ -22,7 +22,7 @@
 			data[newMessageId] = newMessage.val();
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: data,
 				success: function() {
 					saveFormState();
@@ -33,13 +33,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();setUserAutocomplete('<%= serverData.id %>');">
+<body onload="saveFormState();setUserAutocomplete('<%= serverData.id %>');">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -57,7 +58,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<h4 class="subtitle is-4">
 								Server
 							</h4>
@@ -361,8 +362,8 @@
 								&nbsp;
 								<span class="select is-small member_rank_updated_message-options<%= configData.moderation.status_messages.member_rank_updated_message.isEnabled ? '' : ' is-hidden' %>">
 									<select id="member_rank_updated_message-type" name="member_rank_updated_message-type" onchange="$('.member_rank_updated_message-type-options').toggleClass('is-hidden');">
-										<option <%= configData.moderation.status_messages.member_rank_updated_message.type=="message" ? "selected" : "" %>>Message</option>
-										<option <%= configData.moderation.status_messages.member_rank_updated_message.type=="pm" ? "selected" : "" %>>PM</option>
+										<option value="message" <%= configData.moderation.status_messages.member_rank_updated_message.type=="message" ? "selected" : "" %>>Message</option>
+										<option value="pm" <%= configData.moderation.status_messages.member_rank_updated_message.type=="pm" ? "selected" : "" %>>PM</option>
 									</select>
 								</span>
 								&nbsp;
@@ -530,7 +531,7 @@
 								</label>
 								&nbsp;
 								<span id="message_edited_message-type-options" class="select is-small<%= configData.moderation.status_messages.message_edited_message.isEnabled ? '' : ' is-hidden' %>">
-									<select id="message_edited_message-type" onchange="$('.message_edited_message-options').toggleClass('is-hidden');">
+									<select id="message_edited_message-type" name="message_edited_message-type" onchange="$('.message_edited_message-options').toggleClass('is-hidden');">
 										<option value="msg" <%= configData.moderation.status_messages.message_edited_message.channel_id ? "" : "selected" %>>Channel of message</option>
 										<option value="single"  <%= configData.moderation.status_messages.message_edited_message.channel_id ? "selected" : "" %>>Single channel</option>
 									</select>
@@ -562,7 +563,7 @@
 								</label>
 								&nbsp;
 								<span id="message_deleted_message-type-options" class="select is-small<%= configData.moderation.status_messages.message_deleted_message.isEnabled ? '' : ' is-hidden' %>">
-									<select id="message_deleted_message-type" onchange="$('.message_deleted_message-options').toggleClass('is-hidden');">
+									<select id="message_deleted_message-type" name="message_deleted_message-type" onchange="$('.message_deleted_message-options').toggleClass('is-hidden');">
 										<option value="msg" <%= configData.moderation.status_messages.message_deleted_message.channel_id ? "" : "selected" %>>Channel of message</option>
 										<option value="single"  <%= configData.moderation.status_messages.message_deleted_message.channel_id ? "selected" : "" %>>Single channel</option>
 									</select>

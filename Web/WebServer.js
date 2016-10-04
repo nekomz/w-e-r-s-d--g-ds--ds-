@@ -1,25 +1,33 @@
 const express = require("express");
+const sio = require("socket.io");
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 const ejs = require("ejs");
 const session = require("express-session");
 const mongooseSessionStore = require("connect-mongo")(session);
 const passport = require("passport");
+const passportSocketIo = require("passport.socketio");
 const discordStrategy = require("passport-discord").Strategy;
 const discordOAuthScopes = ["identify", "guilds"];
+const path = require("path");
 const fs = require("fs");
 const writeFile = require("write-file-atomic");
 const showdown = require("showdown");
 const md = new showdown.Converter();
 md.setOption("tables", true);
 const removeMd = require("remove-markdown");
+const base64 = require("node-base64-image");
+const sizeof = require("object-sizeof");
 
 const database = require("./../Database/Driver.js");
 const prettyDate = require("./../Modules/PrettyDate.js");
 const secondsToString = require("./../Modules/PrettySeconds.js");
 
-var app = express();
+const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
+app.use(express.static('static'));
+app.set("json spaces", 2);
 
 app.use(express.static(__dirname + "/public"));
 app.engine("ejs", ejs.renderFile);
@@ -45,16 +53,46 @@ module.exports = (bot, db, auth, config, winston) => {
 	passport.deserializeUser((user, done) => {
 		done(null, user);
 	});
+	const sessionStore = new mongooseSessionStore({
+		mongooseConnection: database.getConnection()
+	});
 	app.use(session({
 	    secret: "vFEvmrQl811q2E8CZelg4438l9YFwAYd",
 	    resave: false,
 	    saveUninitialized: false,
-		store: new mongooseSessionStore({
-			mongooseConnection: database.getConnection()
-		})
+		store: sessionStore
 	}));
 	app.use(passport.initialize());
 	app.use(passport.session());
+
+	app.use((req, res, next) => {
+	    res.header("Access-Control-Allow-Origin", "*");
+		res.header('Access-Control-Allow-Credentials', true);
+	    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+	    next();
+	});
+
+	// Handle errors (redirect to error page)
+	app.use(function(error, req, res, next) {
+		winston.error(error);
+	    res.sendStatus(500);
+	    res.render("pages/error.ejs", {error: error});
+	});
+
+	// Open web interface
+	const server = app.listen(config.server_port, config.server_ip, () => {
+        winston.info("Opened web interface on " + config.server_ip + ":" + config.server_port);
+        process.setMaxListeners(0);
+    });
+
+    // Setup socket.io for dashboard
+	const io = sio(server);
+	io.use(passportSocketIo.authorize({
+		key: "connect.sid",
+		secret: "vFEvmrQl811q2E8CZelg4438l9YFwAYd",
+		store: sessionStore,
+		passport: passport
+	}));
 
 	// Landing page
 	app.get("/", (req, res) => {
@@ -139,7 +177,7 @@ module.exports = (bot, db, auth, config, winston) => {
 										username: svr.members.get(svr.ownerID).user.username,
 										id: svr.members.get(svr.ownerID).id,
 										avatar: svr.members.get(svr.ownerID).user.avatarURL || "/img/discord-icon.png",
-										name: svr.members.get(svr.ownerID).nickname || svr.members.get(svr.ownerID).user.username
+										name: svr.members.get(svr.ownerID).nick || svr.members.get(svr.ownerID).user.username
 									},
 									members: svr.members.size,
 									messages: serverDocuments[i].messages_today,
@@ -324,6 +362,11 @@ module.exports = (bot, db, auth, config, winston) => {
 		});
 	});
 
+	// Header image provider
+	app.get("/header-image", (req, res) => {
+		res.sendFile(__dirname + "/public/img/" + config.header_image)
+	});
+
 	// Server list provider for typeahead
 	app.get("/serverlist", (req, res) => {
 		var servers = bot.guilds.map(svr => {
@@ -348,7 +391,373 @@ module.exports = (bot, db, auth, config, winston) => {
 
 	// Extension gallery
 	app.get("/extensions", (req, res) => {
-		res.redirect("/under-construction");
+		res.redirect("/extensions/gallery");
+	});
+	app.post("/extensions", (req, res) => {
+		if(req.isAuthenticated()) {
+			if(req.query.extid && req.body.action) {
+				if(["accept", "feature", "reject", "remove"].indexOf(req.body.action)>-1 && config.maintainers.indexOf(req.user.id)==-1) {
+					res.sendStatus(401);
+					return;
+				}
+				switch(req.body.action) {
+					case "upvote":
+						getGalleryDocument(galleryDocument => {
+							getUserDocument(userDocument => {
+								var vote = userDocument.upvoted_gallery_extensions.indexOf(galleryDocument._id)==-1 ? 1 : -1;
+								if(vote==1) {
+									userDocument.upvoted_gallery_extensions.push(galleryDocument._id);
+								} else {
+									userDocument.upvoted_gallery_extensions.splice(userDocument.upvoted_gallery_extensions.indexOf(galleryDocument._id), 1);
+								}
+								galleryDocument.points += vote;
+								galleryDocument.save(err => {
+									userDocument.save(err => {
+										db.users.findOrCreate({_id: galleryDocument.owner_id}, (err, ownerUserDocument) => {
+											if(!err && ownerUserDocument) {
+												ownerUserDocument.points += vote * 10;
+												if(ownerUserDocument.points<0) {
+													ownerUserDocument.points = 0;
+												}
+												ownerUserDocument.save(err => {});
+											}
+											res.sendStatus(200);
+										});
+									});
+								});
+							});
+						});
+						break;
+					case "accept":
+						getGalleryDocument(galleryDocument => {
+							messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been accepted to the AwesomeBot extension gallery! :tada: " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
+							galleryDocument.state = "gallery";
+							galleryDocument.save(err => {
+								res.sendStatus(err ? 500 : 200);
+							});
+						});
+						break;
+					case "feature":
+						getGalleryDocument(galleryDocument => {
+							if(!galleryDocument.featured) {
+								messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been featured on the AwesomeBot extension gallery! :star: " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
+							}
+							galleryDocument.featured = galleryDocument.featured!=true;
+							galleryDocument.save(err => {
+								res.sendStatus(err ? 500 : 200);
+							});
+						});
+						break;
+					case "reject":
+					case "remove":
+						getGalleryDocument(galleryDocument => {
+							messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been " + req.body.action + (req.body.action=="reject" ? "e" : "") + "d from the AwesomeBot extension gallery for the following reason:```" + req.body.reason + "```");
+							db.users.findOrCreate({_id: galleryDocument.owner_id}, (err, ownerUserDocument) => {
+								if(!err && ownerUserDocument) {
+									ownerUserDocument.points -= galleryDocument.points * 10;
+									if(ownerUserDocument.points<0) {
+										ownerUserDocument.points = 0;
+									}
+									ownerUserDocument.save(err => {});
+								}
+								db.gallery.findByIdAndRemove(galleryDocument._id, err => {
+									res.sendStatus(err ? 500 : 200);
+								});
+							});
+						});
+						break;
+				}
+				function getGalleryDocument(callback) {
+					db.gallery.findOne({_id: req.query.extid}, (err, galleryDocument) => {
+						if(!err && galleryDocument) {
+							callback(galleryDocument);
+						} else {
+							res.sendStatus(500);
+						}
+					});
+				}
+				function getUserDocument(callback) {
+					db.users.findOrCreate({_id: req.user.id}, (err, userDocument) => {
+						if(!err && userDocument) {
+							callback(userDocument);
+						} else {
+							res.sendStatus(500);
+						}
+					});
+				}
+				function messageOwner(usrid, message) {
+					var usr = bot.users.get(usrid);
+					if(usr) {
+						usr.getDMChannel().then(ch => {
+							ch.createMessage(message);
+						}).catch();
+					}
+				}
+			} else {
+				res.sendStatus(400);
+			}
+		} else {
+			res.sendStatus(401);
+		}
+	});
+	app.get("/extension.abext", (req, res) => {
+		if(req.query.extid) {
+			try {
+				res.set({
+				    "Content-Disposition": "attachment; filename='" + "gallery-" + req.query.extid + ".abext" + "'",
+				    "Content-Type": "text/javascript"
+				});
+				res.sendFile(path.resolve(__dirname + "/../Extensions/gallery-" + req.query.extid + ".abext"));
+			} catch(err) {
+				res.sendStatus(500);
+			}
+		} else {
+			res.sendStatus(400);
+		}
+	});
+	app.get("/extensions/(|gallery|queue)", (req, res) => {
+		if(req.isAuthenticated()) {
+			var serverData = [];
+			var usr = bot.users.get(req.user.id);
+			function addServerData(i, callback) {
+				if(i<req.user.guilds.length) {
+					var svr = bot.guilds.get(req.user.guilds[i].id);
+					if(svr && usr) {
+						db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
+							if(!err && serverDocument) {
+								var member = svr.members.get(usr.id);
+								if(bot.getUserBotAdmin(svr, serverDocument, member)==3) {
+									serverData.push({
+										name: req.user.guilds[i].name,
+										id: req.user.guilds[i].id,
+										icon: req.user.guilds[i].icon ? ("https://cdn.discordapp.com/icons/" + req.user.guilds[i].id + "/" + req.user.guilds[i].icon + ".jpg") : "/img/discord-icon.png"
+									});
+								}
+							}
+							addServerData(++i, callback);
+						});
+					} else {
+						addServerData(++i, callback);
+					}
+				} else {
+					callback();
+				}
+			}
+			addServerData(0, () => {
+				serverData.sort((a, b) => {
+					return a.name.localeCompare(b.name);
+				});
+				db.users.findOne({_id: req.user.id}, (err, userDocument) => {
+					if(!err && userDocument) {
+						renderPage(userDocument.upvoted_gallery_extensions, serverData);
+					} else {
+						renderPage([], serverData);
+					}
+				});
+			});
+		} else {
+			renderPage();
+		}
+		function renderPage(upvoted_gallery_extensions, serverData) {
+			var extensionState = req.path.substring(req.path.lastIndexOf("/")+1);
+			db.gallery.find({state: extensionState}, (err, galleryDocuments) => {
+				if(req.query.q) {
+					var query = req.query.q.toLowerCase();
+					galleryDocuments = galleryDocuments.filter(galleryDocument => {
+						return galleryDocument._id==query || galleryDocument.name.toLowerCase().indexOf(query)>-1 || galleryDocument.description.toLowerCase().indexOf(query)>-1 || galleryDocument.owner_id==query;
+					});
+				}
+				res.render("pages/extensions.ejs", {
+					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+					isMaintainer: req.isAuthenticated() ? config.maintainers.indexOf(req.user.id)>-1 : false,
+					serverData: serverData,
+					activeSearchQuery: req.query.q,
+					mode: extensionState,
+					extensions: galleryDocuments.sort((a, b) => {
+						if(a.featured && !b.featured) {
+							return -1;
+						} else if(!a.featured && b.featured) {
+							return 1;
+						} else if(a.points!=b.points) {
+							return b.points - a.points;
+						} else {
+							return new Date(b.last_updated) - new Date(a.last_updated);
+						}
+					}).map(galleryDocument => {
+						var owner = bot.users.get(galleryDocument.owner_id) || {};
+						switch(galleryDocument.type) {
+							case "command":
+								var typeIcon = "magic";
+								var typeDescription = galleryDocument.key;
+								break;
+							case "keyword":
+								var typeIcon = "key";
+								var typeDescription = galleryDocument.keywords.join(", ");
+								break;
+							case "timer":
+								var typeIcon = "clock-o";
+								var typeDescription = "Runs every " + secondsToString(Math.floor(galleryDocument.interval/1000)).slice(-1);
+								break;
+						}
+						return {
+							_id: galleryDocument._id,
+							name: galleryDocument.name,
+							type: galleryDocument.type,
+							typeIcon: typeIcon,
+							typeDescription: typeDescription,
+							description: md.makeHtml(galleryDocument.description),
+							featured: galleryDocument.featured,
+							owner: {
+								name: owner.username || "invalid-user",
+								id: owner.id || "invalid-user",
+								discriminator: owner.discriminator,
+								avatar: owner.avatarURL || "/img/discord-icon.png"
+							},
+							points: galleryDocument.points,
+							relativeLastUpdated: Math.floor((new Date() - new Date(galleryDocument.last_updated))/86400000),
+							rawLastUpdated: prettyDate(new Date(galleryDocument.last_updated))
+						};
+					}),
+					upvotedData: upvoted_gallery_extensions
+				});
+			});
+		}
+	});
+
+	// My extensions
+	app.get("/extensions/my", (req, res) => {
+		if(req.isAuthenticated()) {
+			db.gallery.find({}, (err, galleryDocuments) => {
+				res.render("pages/extensions.ejs", {
+					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+					currentPage: req.path,
+					serverData: {
+						id: req.user.id
+					},
+					activeSearchQuery: req.query.q,
+					mode: "my",
+					extensions: galleryDocuments || []
+				});
+			});
+		} else {
+			res.redirect("/login");
+		}
+	});
+	io.of("/extensions/my").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/extensions/my", (req, res) => {
+		if(req.isAuthenticated()) {
+			db.gallery.find({}, (err, galleryDocuments) => {
+				if(!err && galleryDocuments) {
+					for(var i=0; i<galleryDocuments.length; i++) {
+						if(req.body["extension-" + i + "-removed"]!=null) {
+							db.gallery.findByIdAndRemove(galleryDocuments[i]._id).exec();
+							try {
+								fs.unlink(__dirname + "/../Extensions/gallery-" + galleryDocuments[i]._id + ".abext");
+							} catch(err) {}
+							break;
+						}
+					}
+					io.of(req.path).emit("update", req.user.id);
+					res.redirect(req.originalUrl);
+				} else {
+					res.redirect("/error");
+				}
+			});
+		} else {
+			res.redirect("/login");
+		}
+	});
+
+	// Extension builder
+	app.get("/extensions/builder", (req, res) => {
+		if(req.isAuthenticated()) {
+			if(req.query.extid) {
+				db.gallery.findOne({_id: req.query.extid}, (err, galleryDocument) => {
+					if(!err && galleryDocument) {
+						try {
+							galleryDocument.code = fs.readFileSync(__dirname + "/../Extensions/gallery-" + galleryDocument._id + ".abext");
+						} catch(err) {
+							galleryDocument.code = "";
+						}
+						renderPage(galleryDocument);
+					} else {
+						renderPage({});
+					}
+				});
+			} else {
+				renderPage({});
+			}
+			function renderPage(extensionData) {
+				res.render("pages/extensions.ejs", {
+					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+					currentPage: req.path,
+					serverData: {
+						id: req.user.id
+					},
+					activeSearchQuery: req.query.q,
+					mode: "builder",
+					extensionData: extensionData
+				});
+			}
+		} else {
+			res.redirect("/login");
+		}
+	});
+	io.of("/extensions/builder").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/extensions/builder", (req, res) => {
+		if(req.isAuthenticated()) {
+			if(validateExtensionData(req.body)) {
+				if(req.query.extid) {
+					db.gallery.findOne({_id: req.query.extid}, (err, galleryDocument) => {
+						if(!err && galleryDocument) {
+							saveExtensionData(galleryDocument, true);
+						} else {
+							saveExtensionData(new db.gallery(), false);
+						}
+					});
+				} else {
+					saveExtensionData(new db.gallery(), false);
+				}
+				function saveExtensionData(galleryDocument, isUpdate) {
+					galleryDocument.level = "gallery";
+					galleryDocument.description = req.body.description;
+					writeExtensionData(galleryDocument, req.body);
+
+					if(!isUpdate) {
+						galleryDocument.owner_id = req.user.id;
+						galleryDocument.state = "queue";
+					}
+					galleryDocument.save(err => {
+						if(!err && !req.query.extid) {
+							req.originalUrl += "extid=" + galleryDocument._id;
+						}
+						saveExtensionCode(err, galleryDocument._id);
+					});
+				}
+				function saveExtensionCode(err, extid) {
+					if(err) {
+						winston.error("Failed to update settings at " + req.path, {usrid: req.user.id}, err);
+						sendResponse();
+					} else {
+						writeFile(__dirname + "/../Extensions/gallery-" + extid + ".abext", req.body.code, err => {
+							sendResponse();
+						});
+					}
+				}
+				function sendResponse() {
+					io.of(req.path).emit("update", req.user.id);
+					res.redirect(req.originalUrl);
+				}
+			} else {
+				res.redirect("/error");
+			}
+		} else {
+			res.redirect("/login");
+		}
 	});
 
 	// Wiki page (documentation)
@@ -363,7 +772,11 @@ module.exports = (bot, db, auth, config, winston) => {
 				searchQuery = req.query.q;
 				searchResults = [];
 				for(var i=0; i<items.length; i++) {
-					var content = removeMd(fs.readFileSync(__dirname + "/../Wiki/" + items[i], "utf8"));
+					try {
+						var content = removeMd(fs.readFileSync(__dirname + "/../Wiki/" + items[i], "utf8"));
+					} catch(err) {
+						continue;
+					}
 					var title = items[i].substring(0, items[i].indexOf("."));
 					var contentMatch = content.toLowerCase().indexOf(req.query.q);
 					if(title.toLowerCase().indexOf(req.query.q)>-1 || contentMatch>-1) {
@@ -437,6 +850,32 @@ module.exports = (bot, db, auth, config, winston) => {
 		}
 	}
 
+	// Save serverDocument after admin console form data is received
+	function saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res, override) {
+		serverDocument.save(err => {
+			io.of(req.path).emit("update", svr.id);
+			if(err) {
+				winston.error("Failed to update settings at " + req.path, {svrid: svr.id, usrid: consolemember.id}, err);
+			}
+			if(override) {
+				res.sendStatus(200);
+			} else {
+				res.redirect(req.originalUrl);
+			}
+		});
+	}
+
+	// Save config.json after maintainer console form data is received
+	function saveMaintainerConsoleOptions(consolemember, req, res) {
+		io.of(req.path).emit("update", "maintainer");
+		writeFile(__dirname + "/../Configuration/config.json", JSON.stringify(config, null, 4), err => {
+			if(err) {
+				winston.error("Failed to update settings at " + req.path, {usrid: consolemember.id}, err);
+			}
+			res.redirect(req.originalUrl);
+		});
+	}
+
 	// Login to admin console
 	app.get("/login", passport.authenticate("discord", {
 		scope: discordOAuthScopes
@@ -446,7 +885,11 @@ module.exports = (bot, db, auth, config, winston) => {
 	app.get("/login/callback", passport.authenticate("discord", {
 		failureRedirect: "/error"
 	}), (req, res) => {
-		res.redirect("/dashboard");
+		if(config.global_blocklist.indexOf(req.user.id)>-1) {
+			req.logout();
+		} else {
+			res.redirect("/dashboard");
+		}
 	});
 
 	// Admin console dashboard
@@ -606,6 +1049,22 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/commands/command-options").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/command-options", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body.command_prefix!=bot.getCommandPrefix(svr, serverDocument)) {
+				serverDocument.config.command_prefix = req.body.command_prefix;
+			}
+			serverDocument.config.delete_command_messages = req.body.delete_command_messages=="on";
+			serverDocument.config.command_cooldown = parseInt(req.body.command_cooldown);
+			serverDocument.config.command_fetch_properties.default_count = parseInt(req.body.default_count);
+			serverDocument.config.command_fetch_properties.max_count = parseInt(req.body.max_count);
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console command list
 	app.get("/dashboard/commands/command-list", (req, res) => {
@@ -628,6 +1087,18 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/commands/command-list").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/command-list", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			for(var command in serverDocument.toObject().config.commands) {
+				parseCommandOptions(svr, serverDocument, command, req.body);
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console music
 	app.get("/dashboard/commands/music", (req, res) => {
@@ -645,9 +1116,6 @@ module.exports = (bot, db, auth, config, winston) => {
 				configData: {
 					commands: {
 						music: serverDocument.toObject().config.commands.music,
-						rss: {
-							isEnabled: serverDocument.config.commands.rss.isEnabled
-						},
 						trivia: {
 							isEnabled: serverDocument.config.commands.trivia.isEnabled
 						}
@@ -661,6 +1129,44 @@ module.exports = (bot, db, auth, config, winston) => {
 					music: config.command_descriptions.music
 				}
 			});
+		});
+	});
+	io.of("/dashboard/commands/music").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/music", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(Object.keys(req.body).length==1) {
+				if(req.body["new-name"] && !serverDocument.config.music_data.playlists.id(req.body["new-name"])) {
+					serverDocument.config.music_data.playlists.push({
+						_id: req.body["new-name"]
+					});
+				} else {
+					var args = Object.keys(req.body)[0].split("-");
+					if(args[0]=="new" && args[2]=="item" && args[1] && !isNaN(args[1]) && args[1]>=0 && args[1]<serverDocument.config.music_data.playlists.length) {
+						serverDocument.config.music_data.playlists[parseInt(args[1])].item_urls.push(req.body[Object.keys(req.body)[0]]);
+					}
+				}
+			} else {
+				parseCommandOptions(svr, serverDocument, "music", req.body);
+				serverDocument.config.music_data.addingQueueIsAdminOnly = req.body.addingQueueIsAdminOnly=="true";
+				serverDocument.config.music_data.removingQueueIsAdminOnly = req.body.removingQueueIsAdminOnly=="true";
+				serverDocument.config.music_data.channel_id = req.body.channel_id;
+				for(var i=0; i<serverDocument.config.music_data.playlists.length; i++) {
+					if(req.body["playlist-" + i + "-removed"]!=null) {
+						serverDocument.config.music_data.playlists[i] = null;
+					} else {
+						for(var j=0; j<serverDocument.config.music_data.playlists[i].item_urls.length; j++) {
+							if(req.body["playlist-" + i + "-item-" + j + "-removed"]!=null) {
+								serverDocument.config.music_data.playlists[i].item_urls.splice(j, 1);
+							}
+						}
+					}
+				}
+				serverDocument.config.music_data.playlists.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -679,9 +1185,6 @@ module.exports = (bot, db, auth, config, winston) => {
 				configData: {
 					rss_feeds: serverDocument.toObject().config.rss_feeds,
 					commands: {
-						music: {
-							isEnabled: serverDocument.config.commands.music.isEnabled
-						},
 						rss: serverDocument.config.commands.rss,
 						trivia: {
 							isEnabled: serverDocument.config.commands.trivia.isEnabled
@@ -692,6 +1195,39 @@ module.exports = (bot, db, auth, config, winston) => {
 					rss: config.command_descriptions.rss
 				}
 			});
+		});
+	});
+	io.of("/dashboard/commands/rss-feeds").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/rss-feeds", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-url"] && req.body["new-name"] && !serverDocument.config.rss_feeds.id(req.body["new-name"])) {
+				serverDocument.config.rss_feeds.push({
+					_id: req.body["new-name"],
+					url: req.body["new-url"]
+				});
+			} else {
+				parseCommandOptions(svr, serverDocument, "rss", req.body);
+				for(var i=0; i<serverDocument.config.rss_feeds.length; i++) {
+					if(req.body["rss-" + i + "-removed"]!=null) {
+						serverDocument.config.rss_feeds[i] = null;
+					} else {
+						serverDocument.config.rss_feeds[i].streaming.isEnabled = req.body["rss-" + i + "-streaming-isEnabled"]=="on";
+						serverDocument.config.rss_feeds[i].streaming.enabled_channel_ids = [];
+						svr.channels.forEach(ch => {
+							if(ch.type==0) {
+								if(req.body["rss-" + i + "-streaming-enabled_channel_ids-" + ch.id]=="on") {
+									serverDocument.config.rss_feeds[i].streaming.enabled_channel_ids.push(ch.id);
+								}
+							}
+						});
+					}
+				}
+				serverDocument.config.rss_feeds.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -710,9 +1246,6 @@ module.exports = (bot, db, auth, config, winston) => {
 				configData: {
 					streamers_data: serverDocument.toObject().config.streamers_data,
 					commands: {
-						music: {
-							isEnabled: serverDocument.config.commands.music.isEnabled
-						},
 						streamers: serverDocument.config.commands.streamers,
 						trivia: {
 							isEnabled: serverDocument.config.commands.trivia.isEnabled
@@ -723,6 +1256,31 @@ module.exports = (bot, db, auth, config, winston) => {
 					streamers: config.command_descriptions.streamers
 				}
 			});
+		});
+	});
+	io.of("/dashboard/commands/streamers").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/streamers", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-name"] && req.body["new-type"] && !serverDocument.config.streamers_data.id(req.body["new-name"])) {
+				serverDocument.config.streamers_data.push({
+					_id: req.body["new-name"],
+					type: req.body["new-type"]
+				});
+			} else {
+				parseCommandOptions(svr, serverDocument, "streamers", req.body);
+				for(var i=0; i<serverDocument.config.streamers_data.length; i++) {
+					if(req.body["streamer-" + i + "-removed"]!=null) {
+						serverDocument.config.streamers_data[i] = null;
+					} else {
+						serverDocument.config.streamers_data[i].channel_id = req.body["streamer-" + i + "-channel_id"];
+					}
+				}
+				serverDocument.config.streamers_data.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -741,9 +1299,6 @@ module.exports = (bot, db, auth, config, winston) => {
 				configData: {
 					tags: serverDocument.toObject().config.tags,
 					commands: {
-						music: {
-							isEnabled: serverDocument.config.commands.music.isEnabled
-						},
 						tag: serverDocument.config.commands.tag,
 						trivia: {
 							isEnabled: serverDocument.config.commands.trivia.isEnabled
@@ -795,6 +1350,38 @@ module.exports = (bot, db, auth, config, winston) => {
 			res.render("pages/admin-tags.ejs", data);
 		});
 	});
+	io.of("/dashboard/commands/tags").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/tags", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-name"] && req.body["new-type"] && req.body["new-content"] && !serverDocument.config.tags.list.id(req.body["new-name"])) {
+				serverDocument.config.tags.list.push({
+					_id: req.body["new-name"],
+					content: req.body["new-content"],
+					isCommand: req.body["new-type"]=="command"
+				});
+			} else {
+				parseCommandOptions(svr, serverDocument, "tag", req.body);
+				serverDocument.config.tags.listIsAdminOnly = req.body.listIsAdminOnly=="true";
+				serverDocument.config.tags.addingIsAdminOnly = req.body.addingIsAdminOnly=="true";
+				serverDocument.config.tags.addingCommandIsAdminOnly = req.body.addingCommandIsAdminOnly=="true";
+				serverDocument.config.tags.removingIsAdminOnly = req.body.removingIsAdminOnly=="true";
+				serverDocument.config.tags.removingCommandIsAdminOnly = req.body.removingCommandIsAdminOnly=="true";
+				for(var i=0; i<serverDocument.config.tags.list.length; i++) {
+					if(req.body["tag-" + i + "-removed"]!=null) {
+						serverDocument.config.tags.list[i] = null;
+					} else {
+						serverDocument.config.tags.list[i].isCommand = req.body["tag-" + i + "-isCommand"]=="command";
+						serverDocument.config.tags.list[i].isLocked = req.body["tag-" + i + "-isLocked"]=="on";
+					}
+				}
+				serverDocument.config.tags.list.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console auto translation
 	app.get("/dashboard/commands/auto-translation", (req, res) => {
@@ -811,9 +1398,6 @@ module.exports = (bot, db, auth, config, winston) => {
 				configData: {
 					translated_messages: serverDocument.toObject().config.translated_messages,
 					commands: {
-						music: {
-							isEnabled: serverDocument.config.commands.music.isEnabled
-						},
 						trivia: {
 							isEnabled: serverDocument.config.commands.trivia.isEnabled
 						}
@@ -828,30 +1412,101 @@ module.exports = (bot, db, auth, config, winston) => {
 			res.render("pages/admin-auto-translation.ejs", data);
 		});
 	});
+	io.of("/dashboard/commands/auto-translation").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/auto-translation", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-member"] && req.body["new-source_language"]) {
+				var member = findQueryUser(req.body["new-member"], svr.members);
+				if(member && !serverDocument.config.translated_messages.id(member.id)) {
+					var enabled_channel_ids = [];
+					svr.channels.forEach(ch => {
+						if(ch.type==0) {
+							if(req.body["new-enabled_channel_ids-" + ch.id]=="true") {
+								enabled_channel_ids.push(ch.id);
+							}
+						}
+					});
+					serverDocument.config.translated_messages.push({
+						_id: member.id,
+						source_language: req.body["new-source_language"],
+						enabled_channel_ids: enabled_channel_ids
+					});
+				}
+			} else {
+				for(var i=0; i<serverDocument.config.translated_messages.length; i++) {
+					if(req.body["translated_messages-" + i + "-removed"]!=null) {
+						serverDocument.config.translated_messages[i] = null;
+					} else {
+						serverDocument.config.translated_messages[i].enabled_channel_ids = [];
+						svr.channels.forEach(ch => {
+							if(ch.type==0) {
+								if(req.body["translated_messages-" + i + "-enabled_channel_ids-" + ch.id]=="on") {
+									serverDocument.config.translated_messages[i].enabled_channel_ids.push(ch.id);
+								}
+							}
+						});
+					}
+				}
+				serverDocument.config.translated_messages.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console trivia sets
 	app.get("/dashboard/commands/trivia-sets", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
-			res.render("pages/admin-trivia-sets.ejs", {
-				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
-				serverData: {
-					name: svr.name,
-					id: svr.id,
-					icon: svr.iconURL || "/img/discord-icon.png"
-				},
-				currentPage: req.path,
-				configData: {
-					trivia_sets: serverDocument.toObject().config.trivia_sets,
-					commands: {
-						music: {
-							isEnabled: serverDocument.config.commands.music.isEnabled
-						},
-						trivia: {
-							isEnabled: serverDocument.config.commands.trivia.isEnabled
+			if(req.query.i) {
+				var triviaSetDocument = serverDocument.config.trivia_sets[req.query.i];
+				if(triviaSetDocument) {
+					res.json(triviaSetDocument.items);
+				} else {
+					res.redirect("/error");
+				}
+			} else {
+				res.render("pages/admin-trivia-sets.ejs", {
+					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+					serverData: {
+						name: svr.name,
+						id: svr.id,
+						icon: svr.iconURL || "/img/discord-icon.png"
+					},
+					currentPage: req.path,
+					configData: {
+						trivia_sets: serverDocument.toObject().config.trivia_sets,
+						commands: {
+							trivia: {
+								isEnabled: serverDocument.config.commands.trivia.isEnabled
+							}
 						}
 					}
+				});
+			}
+		});
+	});
+	io.of("/dashboard/commands/trivia-sets").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/trivia-sets", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-name"] && req.body["new-items"] && !serverDocument.config.trivia_sets.id(req.body["new-name"])) {
+				serverDocument.config.trivia_sets.push({
+					_id: req.body["new-name"],
+					items: JSON.parse(req.body["new-items"])
+				});
+			} else {
+				for(var i=0; i<serverDocument.config.trivia_sets.length; i++) {
+					if(req.body["trivia_set-" + i + "-removed"]!=null) {
+						serverDocument.config.trivia_sets[i] = null;
+					}
 				}
-			});
+				serverDocument.config.trivia_sets.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -872,6 +1527,17 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/commands/api-keys").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/api-keys", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			serverDocument.config.custom_api_keys.google_api_key = req.body["google_api_key"];
+			serverDocument.config.custom_api_keys.google_cse_id = req.body["google_cse_id"];
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console tag reaction
 	app.get("/dashboard/commands/tag-reaction", (req, res) => {
@@ -888,6 +1554,26 @@ module.exports = (bot, db, auth, config, winston) => {
 					tag_reaction: serverDocument.toObject().config.tag_reaction
 				}
 			});
+		});
+	});
+	io.of("/dashboard/commands/tag-reaction").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/commands/tag-reaction", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-message"] && req.body["new-message"].length<=2000) {
+				serverDocument.config.tag_reaction.messages.push(req.body["new-message"]);
+			} else {
+				serverDocument.config.tag_reaction.isEnabled = req.body["isEnabled"]=="on";
+				for(var i=0; i<serverDocument.config.tag_reaction.messages.length; i++) {
+					if(req.body["tag_reaction-" + i + "-removed"]!=null) {
+						serverDocument.config.tag_reaction.messages[i] = null;
+					}
+				}
+				serverDocument.config.tag_reaction.messages.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -916,6 +1602,18 @@ module.exports = (bot, db, auth, config, winston) => {
 					stats: config.command_descriptions.stats
 				}
 			});
+		});
+	});
+	io.of("/dashboard/stats-points/stats-collection").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/stats-points/stats-collection", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			parseCommandOptions(svr, serverDocument, "stats", req.body);
+			parseCommandOptions(svr, serverDocument, "games", req.body);
+			parseCommandOptions(svr, serverDocument, "messages", req.body);
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -949,6 +1647,44 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/stats-points/ranks").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/stats-points/ranks", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-name"] && req.body["new-max_score"] && !serverDocument.config.ranks_list.id(req.body["new-name"])) {
+				serverDocument.config.ranks_list.push({
+					_id: req.body["new-name"],
+					max_score: req.body["new-max_score"],
+					role_id: req.body["new-role_id"] || null
+				});
+			} else {
+				for(var i=0; i<serverDocument.config.ranks_list.length; i++) {
+					if(req.body["rank-" + i + "-removed"]!=null) {
+						serverDocument.config.ranks_list[i] = null;
+					} else {
+						serverDocument.config.ranks_list[i].max_score = parseInt(req.body["rank-" + i + "-max_score"]);
+						if(serverDocument.config.ranks_list[i].role_id || req.body["rank-" + i + "-role_id"]) {
+							serverDocument.config.ranks_list[i].role_id = req.body["rank-" + i + "-role_id"];
+						}
+					}
+				}
+				if(req.body["ranks_list-reset"]!=null) {
+					for(var i=0; i<serverDocument.members.length; i++) {
+						if(serverDocument.members[i].rank && serverDocument.members[i].rank!=serverDocument.config.ranks_list[0]._id) {
+							serverDocument.members[i].rank = serverDocument.config.ranks_list[0]._id;
+						}
+					}
+				}
+			}
+			serverDocument.config.ranks_list.spliceNullElements();
+			serverDocument.config.ranks_list = serverDocument.config.ranks_list.sort((a, b) => {
+				return a.max_score - b.max_score;
+			});
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console AwesomePoints
 	app.get("/dashboard/stats-points/awesome-points", (req, res) => {
@@ -972,6 +1708,17 @@ module.exports = (bot, db, auth, config, winston) => {
 					points: config.command_descriptions.points
 				}
 			});
+		});
+	});
+	io.of("/dashboard/stats-points/awesome-points").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/stats-points/awesome-points", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			parseCommandOptions(svr, serverDocument, "points", req.body);
+			serverDocument.config.points_lottery = req.body["points_lottery"]=="on";
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -1002,6 +1749,28 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/management/admins").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/admins", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-role_id"] && req.body["new-level"] && !serverDocument.config.admins.id(req.body["new-role_id"])) {
+				serverDocument.config.admins.push({
+					_id: req.body["new-role_id"],
+					level: parseInt(req.body["new-level"])
+				});
+			} else {
+				for(var i=0; i<serverDocument.config.admins.length; i++) {
+					if(req.body["admin-" + i + "-removed"]!=null) {
+						serverDocument.config.admins[i] = null;
+					}
+				}
+				serverDocument.config.admins.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console moderation
 	app.get("/dashboard/management/moderation", (req, res) => {
@@ -1025,6 +1794,26 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/management/moderation").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/moderation", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			serverDocument.config.moderation.isEnabled = req.body["isEnabled"]=="on";
+			serverDocument.config.moderation.autokick_members.isEnabled = req.body["autokick_members-isEnabled"]=="on";
+			serverDocument.config.moderation.autokick_members.max_inactivity = parseInt(req.body["autokick_members-max_inactivity"]);
+			serverDocument.config.moderation.new_member_roles = [];
+			svr.roles.forEach(role => {
+				if(role.name!="@everyone" && role.name.indexOf("color-")!=0) {
+					if(req.body["new_member_roles-" + role.id]=="on") {
+						serverDocument.config.moderation.new_member_roles.push(role.id);
+					}
+				}
+			});
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console blocked
 	app.get("/dashboard/management/blocked", (req, res) => {
@@ -1046,12 +1835,43 @@ module.exports = (bot, db, auth, config, winston) => {
 							id: member.id,
 							avatar: member.user.avatarURL || "/img/discord-icon.png"
 						};
-					}),
+					}).concat(config.global_blocklist.filter(usrid => {
+						return svr.members.has(usrid);
+					}).map(usrid => {
+						var member = svr.members.get(usrid);
+						return {
+							name: member.user.username + " (global)",
+							id: member.id,
+							avatar: member.user.avatarURL || "/img/discord-icon.png"
+						};
+					})),
 					moderation: {
 						isEnabled: serverDocument.toObject().config.moderation.isEnabled
 					}
 				}
 			});
+		});
+	});
+	io.of("/dashboard/management/blocked").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/blocked", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-member"]) {
+				var member = findQueryUser(req.body["new-member"], svr.members);
+				if(member && serverDocument.config.blocked.indexOf(member.id)==-1 && bot.getUserBotAdmin(svr, serverDocument, member)==0) {
+					serverDocument.config.blocked.push(member.id);
+				}
+			} else {
+				for(var i=0; i<serverDocument.config.blocked.length; i++) {
+					if(req.body["block-" + i + "-removed"]!=null) {
+						serverDocument.config.blocked[i] = null;
+					}
+				}
+				serverDocument.config.blocked.spliceNullElements();
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -1098,6 +1918,37 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/management/muted").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/muted", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-member"] && req.body["new-channel_id"]) {
+				var member = findQueryUser(req.body["new-member"], svr.members);
+				var ch = svr.channels.get(req.body["new-channel_id"]);
+				if(member && bot.getUserBotAdmin(svr, serverDocument, member)==0 && ch && !bot.isMuted(ch, member)) {
+					bot.muteMember(ch, member, () => {
+						res.redirect(req.originalUrl);
+					});
+				} else {
+					res.redirect(req.originalUrl);
+				}
+			} else {
+				svr.members.forEach(member => {
+					svr.channels.forEach(ch => {
+						if(ch.type==0) {
+							if(bot.isMuted(ch, member) && (!req.body["muted-" + member.id + "-" + ch.id] || req.body["muted-" + member.id + "-removed"]!=null)) {
+								bot.unmuteMember(ch, member);
+							} else if(!bot.isMuted(ch, member) && req.body["muted-" + member.id + "-" + ch.id]=="on") {
+								bot.muteMember(ch, member);
+							}
+						}
+					});
+				});
+				res.redirect(req.originalUrl);
+			}
+		});
+	});
 
 	// Admin console strikes
 	app.get("/dashboard/management/strikes", (req, res) => {
@@ -1135,16 +1986,49 @@ module.exports = (bot, db, auth, config, winston) => {
 								creator: {
 									name: creator.user.username,
 									id: creator.id,
-									avatar: creator.avatarURL || "/img/discord-icon.png"
+									avatar: creator.user.avatarURL || "/img/discord-icon.png"
 								},
 								reason: md.makeHtml(strikeDocument.reason),
 								rawDate: prettyDate(new Date(strikeDocument.timestamp)),
-								relativeDate: Math.ceil((Date.now() - strikeDocument.timestamp))
+								relativeDate: Math.floor((new Date() - new Date(strikeDocument.timestamp))/86400000)
 							};
 						})
 					};
 				})
 			});
+		});
+	});
+	io.of("/dashboard/management/strikes").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/strikes", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["new-member"] && req.body["new-reason"]) {
+				var member = findQueryUser(req.body["new-member"], svr.members);
+				if(member && bot.getUserBotAdmin(svr, serverDocument, member)==0) {
+					var memberDocument = serverDocument.members.id(member.id);
+					if(!memberDocument) {
+						serverDocument.members.push({_id: member.id});
+						memberDocument = serverDocument.members.id(member.id);
+					}
+					memberDocument.strikes.push({
+						_id: consolemember.id,
+						reason: req.body["new-reason"]
+					});
+				}
+			} else {
+				for(var key in req.body) {
+					var args = key.split("-");
+					if(args[0]=="strikes" && !isNaN(args[1]) && args[2]=="removeall") {
+						var memberDocument = serverDocument.members.id(args[1]);
+						if(memberDocument) {
+							memberDocument.strikes = [];
+						}
+					}
+				}
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -1157,7 +2041,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				statusMessagesData.member_streaming_message.enabled_user_ids[i] = {
 					name: member.user.username,
 					id: member.id,
-					avatar: member.avatarURL || "/img/discord-icon.png"
+					avatar: member.user.avatarURL || "/img/discord-icon.png"
 				};
 			}
 			res.render("pages/admin-status-messages.ejs", {
@@ -1176,6 +2060,70 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				}
 			});
+		});
+	});
+	io.of("/dashboard/management/status-messages").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/status-messages", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(Object.keys(req.body).length==1) {
+				var args = Object.keys(req.body)[0].split("-");
+				if(args[0]=="new" && serverDocument.config.moderation.status_messages[args[1]] && args[2]=="message") {
+					if(args[1]=="member_streaming_message") {
+						var member = findQueryUser(req.body[Object.keys(req.body)[0]], svr.members);
+						if(member && serverDocument.config.moderation.status_messages[args[1]].enabled_user_ids.indexOf(member.id)==-1) {
+							serverDocument.config.moderation.status_messages[args[1]].enabled_user_ids.push(member.id);
+						}
+					} else if(serverDocument.config.moderation.status_messages[args[1]].messages) {
+						serverDocument.config.moderation.status_messages[args[1]].messages.push(req.body[Object.keys(req.body)[0]]);
+					}
+				}
+			} else {
+				for(var status_message in serverDocument.toObject().config.moderation.status_messages) {
+					if(["new_member_pm", "member_removed_pm"].indexOf(status_message)==-1) {
+						serverDocument.config.moderation.status_messages[status_message].channel_id = "";
+					}
+					for(var key in serverDocument.toObject().config.moderation.status_messages[status_message]) {
+						switch(key) {
+							case "isEnabled":
+								serverDocument.config.moderation.status_messages[status_message][key] = req.body[status_message + "-" + key]=="on";
+								break;
+							case "enabled_channel_ids":
+								if(["message_edited_message", "message_deleted_message"].indexOf(status_message)>-1 && req.body[status_message + "-type"]=="single") {
+									break;
+								}
+								serverDocument.config.moderation.status_messages[status_message][key] = [];
+								svr.channels.forEach(ch => {
+									if(ch.type==0) {
+										if(req.body[status_message + "-" + key + "-" + ch.id]!=null) {
+											serverDocument.config.moderation.status_messages[status_message][key].push(ch.id);
+										}
+									}
+								});
+								break;
+							case "channel_id":
+								if(["message_edited_message", "message_deleted_message"].indexOf(status_message)>-1 && req.body[status_message + "-type"]=="msg") {
+									break;
+								}
+							case "type":
+								serverDocument.config.moderation.status_messages[status_message][key] = req.body[status_message + "-" + key];
+								break;
+						}
+					}
+					var key = status_message=="member_streaming_message" ? "enabled_user_ids" : "messages";
+					if(serverDocument.config.moderation.status_messages[status_message][key]) {
+						for(var i=0; i<serverDocument.config.moderation.status_messages[status_message][key].length; i++) {
+							if(req.body[status_message + "-" + i + "-removed"]!=null) {
+								serverDocument.config.moderation.status_messages[status_message][key][i] = null;
+							}
+						}
+						serverDocument.config.moderation.status_messages[status_message][key].spliceNullElements();
+					}
+				}
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -1204,6 +2152,42 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/management/filters").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/filters", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			for(var filter in serverDocument.toObject().config.moderation.filters) {
+				for(var key in serverDocument.toObject().config.moderation.filters[filter]) {
+					switch(key) {
+						case "isEnabled":
+						case "delete_messages":
+						case "delete_message":
+							serverDocument.config.moderation.filters[filter][key] = req.body[filter + "-" + key]=="on";
+							break;
+						case "disabled_channel_ids":
+							serverDocument.config.moderation.filters[filter][key] = [];
+							svr.channels.forEach(ch => {
+								if(ch.type==0) {
+									if(req.body[filter + "-" + key + "-" + ch.id]!="on") {
+										serverDocument.config.moderation.filters[filter][key].push(ch.id);
+									}
+								}
+							});
+							break;
+						case "keywords":
+							serverDocument.config.moderation.filters[filter][key] = req.body[filter + "-" + key].split(",");
+							break;
+						default:
+							serverDocument.config.moderation.filters[filter][key] = req.body[filter + "-" + key];
+							break;
+					}
+				}
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console message of the day
 	app.get("/dashboard/management/message-of-the-day", (req, res) => {
@@ -1224,6 +2208,19 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/management/message-of-the-day").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/message-of-the-day", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			serverDocument.config.message_of_the_day.isEnabled = req.body["isEnabled"]=="on";
+			serverDocument.config.message_of_the_day.message_content = req.body["message_content"];
+			serverDocument.config.message_of_the_day.channel_id = req.body["channel_id"];
+			serverDocument.config.message_of_the_day.interval = parseInt(req.body["interval"]);
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console voicetext channels
 	app.get("/dashboard/management/voicetext-channels", (req, res) => {
@@ -1241,6 +2238,23 @@ module.exports = (bot, db, auth, config, winston) => {
 					voicetext_channels: serverDocument.toObject().config.voicetext_channels
 				}
 			});
+		});
+	});
+	io.of("/dashboard/management/voicetext-channels").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/voicetext-channels", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			serverDocument.config.voicetext_channels = [];
+			svr.channels.forEach(ch=> {
+				if(ch.type==2) {
+					if(req.body["voicetext_channels-" + ch.id]=="on") {
+						serverDocument.config.voicetext_channels.push(ch.id);
+					}
+				}
+			});
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -1274,6 +2288,27 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/management/roles").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/management/roles", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			parseCommandOptions(svr, serverDocument, "roleinfo", req.body);
+			parseCommandOptions(svr, serverDocument, "role", req.body);
+			serverDocument.config.custom_colors = req.body["custom_colors"]=="on";
+			serverDocument.config.custom_roles = [];
+			svr.roles.forEach(role => {
+				if(role.name!="@everyone" && role.name.indexOf("color-")!=0) {
+					if(req.body["custom_roles-" + role.id]=="on") {
+						serverDocument.config.custom_roles.push(role.id);
+					}
+				}
+			});
+			parseCommandOptions(svr, serverDocument, "perms", req.body);
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console logs
 	app.get("/dashboard/management/logs", (req, res) => {
@@ -1290,21 +2325,28 @@ module.exports = (bot, db, auth, config, winston) => {
 					results = results.file;
 					var logs = [];
 					for(var i=0; i<results.length; i++) {
-						if(results[i].svrid && svr.id==results[i].svrid) {
+						if(results[i].svrid && svr.id==results[i].svrid && (!req.query.q || results[i].message.toLowerCase().indexOf(req.query.q.toLowerCase())>-1) && (!req.query.chid || results[i].chid==req.query.chid)) {
 							delete results[i].svrid;
 							var ch = results[i].chid ? svr.channels.get(results[i].chid) : null;
-							results[i].chid = ch ? ch.name : "invalid-channel";
+							if(results[i].chid) {
+								results[i].ch = ch ? ch.name : "invalid-channel";
+							}
 							var member = results[i].usrid ? svr.members.get(results[i].usrid) : null;
-							results[i].usrid = member ? (member.user.username + "#" + member.user.discriminator) : "invalid-user";
+							if(results[i].usrid) {
+								results[i].usr = member ? (member.user.username + "#" + member.user.discriminator) : "invalid-user";
+							}
 							switch(results[i].level) {
 								case "warn":
 									results[i].level = "exclamation";
+									results[i].levelColor = "#ffdd57";
 									break;
 								case "error":
 									results[i].level = "times";
+									results[i].levelColor = "#ff3860";
 									break;
 								default:
 									results[i].level = "info";
+									results[i].levelColor = "#3273dc";
 									break;
 							}
 							results[i].timestamp = prettyDate(new Date(results[i].timestamp));
@@ -1319,8 +2361,11 @@ module.exports = (bot, db, auth, config, winston) => {
 							id: svr.id,
 							icon: svr.iconURL || "/img/discord-icon.png"
 						},
+						channelData: getChannelData(svr),
 						currentPage: req.path,
-						logData: logs
+						logData: logs,
+						searchQuery: req.query.q,
+						channelQuery: req.query.chid
 					});
 				}
 			});
@@ -1343,6 +2388,17 @@ module.exports = (bot, db, auth, config, winston) => {
 				},
 				nameExample: bot.getName(svr, serverDocument, consolemember)
 			});
+		});
+	});
+	io.of("/dashboard/management/name-display").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/other/name-display", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			serverDocument.config.name_display.use_nick = req.body["name_display-use_nick"]=="on";
+			serverDocument.config.name_display.show_discriminator = req.body["name_display-show_discriminator"]=="on";
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
 
@@ -1423,6 +2479,9 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/management/ongoing-activities").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
 
 	// Admin console public data
 	app.get("/dashboard/other/public-data", (req, res) => {
@@ -1441,10 +2500,57 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/other/public-data").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/other/public-data", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			serverDocument.config.public_data.isShown = req.body["isShown"]=="on";
+			var createInvite = false;
+			if(!serverDocument.config.public_data.server_listing.isEnabled && req.body["server_listing-isEnabled"]=="on") {
+				createInvite = true;
+			}
+			serverDocument.config.public_data.server_listing.isEnabled = req.body["server_listing-isEnabled"]=="on";
+			serverDocument.config.public_data.server_listing.category = req.body["server_listing-category"];
+			serverDocument.config.public_data.server_listing.description = req.body["server_listing-description"];
+			if(createInvite) {
+				svr.defaultChannel.createInvite({
+					maxAge: 0,
+					maxUses: 0
+				}).then(invite => {
+					if(invite) {
+						serverDocument.config.public_data.server_listing.invite_link = "https://discord.gg/" + invite.code;
+					}
+					saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+				});
+			} else if(serverDocument.config.public_data.server_listing.invite_link) {
+				svr.defaultChannel.getInvites().then(invites => {
+					if(invites) {
+						var inviteToDelete = invites.find(invite => {
+							return ("https://discord.gg/" + invite.code)==serverDocument.config.public_data.server_listing.invite_link;
+						});
+						if(inviteToDelete) {
+							inviteToDelete.delete().then(() => {
+								saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+							});
+						} else {
+							saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+						}
+					}
+				});
+			} else {
+				saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+			}
+		});
+	});
 
 	// Admin console extensions
 	app.get("/dashboard/other/extensions", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			var extensionData = serverDocument.toObject().extensions;
+			extensionData.forEach(extensionDocument => {
+				extensionDocument.store = sizeof(extensionDocument.store);
+			});
 			res.render("pages/admin-extensions.ejs", {
 				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 				serverData: {
@@ -1452,15 +2558,162 @@ module.exports = (bot, db, auth, config, winston) => {
 					id: svr.id,
 					icon: svr.iconURL || "/img/discord-icon.png"
 				},
-				currentPage: req.path
+				currentPage: req.path,
+				configData: {
+					extensions: extensionData
+				}
 			});
+		});
+	});
+	io.of("/dashboard/other/extensions").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/other/extensions", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(Object.keys(req.body).length==1 && Object.keys(req.body)[0].indexOf("new-")==0) {
+				var state = Object.keys(req.body)[0].split("-")[1];
+				db.gallery.findOne({
+					_id: req.body[Object.keys(req.body)[0]],
+					state: state
+				}, (err, galleryDocument) => {
+					if(!err && galleryDocument) {
+						var extensionDocument = galleryDocument;
+						extensionDocument.level = "third";
+						extensionDocument.enabled_channel_ids = [svr.defaultChannel.id];
+						extensionDocument.description = undefined;
+						extensionDocument.points = undefined;
+						extensionDocument.owner_id = undefined;
+						extensionDocument.featured = undefined;
+						extensionDocument.state = undefined;
+						extensionDocument.store = {};
+
+						serverDocument.extensions.push(extensionDocument);
+						extensionDocument._id = serverDocument.extensions[serverDocument.extensions.length-1]._id;
+
+						try {
+							writeFile(__dirname + "/../Extensions/" + svr.id + "-" + extensionDocument._id + ".abext", fs.readFileSync(__dirname + "/../Extensions/gallery-" + req.body[Object.keys(req.body)[0]] + ".abext"), err => {
+								saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+							});
+						} catch(err) {
+							saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+						}
+					} else {
+						res.sendStatus(500);
+					}
+				});
+			} else {
+				for(var i=0; i<serverDocument.extensions.length; i++) {
+					if(req.body["extension-" + i + "-removed"]!=null) {
+						try {
+							fs.unlink(__dirname + "/../Extensions/" + svr.id + "-" + serverDocument.extensions[i]._id + ".abext");
+						} catch(err) {}
+						serverDocument.extensions[i] = null;
+						break;
+					}
+				}
+				serverDocument.extensions.spliceNullElements();
+
+				saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+			}
 		});
 	});
 
 	// Admin console extension builder
 	app.get("/dashboard/other/extension-builder", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
-			res.redirect("/under-construction");
+			var extensionData = {};
+			if(req.query.extid) {
+				extensionData = serverDocument.extensions.id(req.query.extid);
+				if(!extensionData) {
+					res.redirect("/error");
+					return;
+				} else {
+					try {
+						extensionData.code = fs.readFileSync(__dirname + "/../Extensions/" + svr.id + "-" + extensionData._id + ".abext");
+					} catch(err) {
+						extensionData.code = "";
+					}
+				}
+			}
+			res.render("pages/admin-extension-builder.ejs", {
+				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+				serverData: {
+					name: svr.name,
+					id: svr.id,
+					icon: svr.iconURL || "/img/discord-icon.png"
+				},
+				channelData: getChannelData(svr),
+				currentPage: req.path,
+				extensionData: extensionData
+			});
+		});
+	});
+	io.of("/dashboard/other/extension-builder").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/other/extension-builder", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(validateExtensionData(req.body)) {
+				var extensionDocument = {};
+				var isUpdate = false;
+				if(req.query.extid) {
+					for(var i=0; i<serverDocument.extensions.length; i++) {
+						if(serverDocument.extensions[i]._id==req.query.extid) {
+							extensionDocument = serverDocument.extensions[i];
+							isUpdate = true;
+							break;
+						}
+					}
+				}
+				var enabled_channel_ids = [];
+				svr.channels.forEach(ch => {
+					if(ch.type==0) {
+						if(req.body["enabled_channel_ids-" + ch.id]=="on") {
+							enabled_channel_ids.push(ch.id);
+						}
+					}
+				});
+				extensionDocument.level = "third";
+				extensionDocument.enabled_channel_ids = enabled_channel_ids;
+				extensionDocument.isAdminOnly = ["command", "keyword"].indexOf(req.body.type)>-1 ? req.body.isAdminOnly=="on" : null;
+				extensionDocument = writeExtensionData(extensionDocument, req.body);
+
+				if(!isUpdate) {
+					serverDocument.extensions.push(extensionDocument);
+					extensionDocument._id = serverDocument.extensions[serverDocument.extensions.length-1]._id;
+					if(!req.query.extid) {
+						req.originalUrl += "&extid=" + extensionDocument._id;
+					}
+				}
+
+				writeFile(__dirname + "/../Extensions/" + svr.id + "-" + extensionDocument._id + ".abext", req.body.code, err => {
+					saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+				});
+			} else {
+				res.redirect("/error");
+			}
+		});
+	});
+	function validateExtensionData(data) {
+		return ((data.type=="command" && data.key) || (data.type=="keyword" && data.keywords) || (data.type=="timer" && data.interval)) && data.code;
+	}
+	function writeExtensionData(extensionDocument, data) {
+		extensionDocument.name = data.name;
+		extensionDocument.type = data.type;
+		extensionDocument.key = data.type=="command" ? data.key : null;
+		extensionDocument.keywords = data.type=="keyword" ? data.keywords.split(",") : null;
+		extensionDocument.interval = data.type=="timer" ? data.interval : null;
+		extensionDocument.usage_help = data.type=="command" ? data.usage_help : null;
+		extensionDocument.extended_help = data.type=="command" ? data.extended_help : null;
+		extensionDocument.last_updated = Date.now();
+
+		return extensionDocument;
+	}
+
+	// Admin console export configs
+	app.get("/dashboard/other/export", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			res.json(serverDocument.toObject().config);
 		});
 	});
 
@@ -1494,6 +2747,8 @@ module.exports = (bot, db, auth, config, winston) => {
 					userCount: bot.users.size,
 					totalMessageCount: messageCount,
 					roundedUptime: Math.floor(process.uptime()/3600000),
+					shardCount: bot.shards.size,
+					version: config.version
 				});
 			});
 		});
@@ -1532,7 +2787,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				} else if(req.query.leave!=undefined) {
 					var svr = bot.guilds.get(data[parseInt(req.query.i)].id);
 					if(svr) {
-						svr.leave();
+						bot.leaveGuild(svr.id);
 						req.query.q = "";
 						renderPage();
 					} else {
@@ -1579,6 +2834,16 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	app.post("/dashboard/servers/big-message", (req, res) => {
+		checkAuth(req, res, consolemember => {
+			if(req.body["message"]) {
+				bot.guilds.forEach(svr => {
+					svr.defaultChannel.createMessage(req.body["message"]);
+				});
+			}
+			res.redirect(req.originalUrl);
+		});
+	});
 
 	// Maintainer console blocklist
 	app.get("/dashboard/global-options/blocklist", (req, res) => {
@@ -1605,6 +2870,28 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/global-options/blocklist").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/global-options/blocklist", (req, res) => {
+		checkAuth(req, res, consolemember => {
+			if(req.body["new-user"]) {
+				var usr = findQueryUser(req.body["new-user"], bot.users);
+				if(usr && config.global_blocklist.indexOf(usr.id)==-1 && config.maintainers.indexOf(usr.id)==-1) {
+					config.global_blocklist.push(usr.id);
+				}
+			} else {
+				for(var i=0; i<config.global_blocklist.length; i++) {
+					if(req.body["block-" + i + "-removed"]!=null) {
+						config.global_blocklist[i] = null;
+					}
+				}
+				config.global_blocklist.spliceNullElements();
+			}
+
+			saveMaintainerConsoleOptions(consolemember, req, res);
+		});
+	});
 
 	// Maintainer console bot user options
 	app.get("/dashboard/global-options/bot-user", (req, res) => {
@@ -1628,6 +2915,42 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	io.of("/dashboard/global-options/bot-user").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/global-options/bot-user", (req, res) => {
+		checkAuth(req, res, consolemember => {
+			if(req.body["avatar"]) {
+				base64.encode(req.body["avatar"], {
+					string: true
+				}, (err, data) => {
+					updateBotUser(data);
+				});
+			} else {
+				updateBotUser();
+			}
+			function updateBotUser(avatar) {
+				bot.editSelf({
+					avatar: avatar ? ("data:image/jpeg;base64," + avatar) : null,
+					username: req.body["username"]!=bot.user.username ? req.body["username"] : null
+				}).then(() => {
+					var game = {
+						name: req.body["game"]
+					};
+					config.game = req.body["game"];
+					if(req.body["game"]=="awesomebot.xyz" || req.body["game-default"]!=null) {
+						config.game = "default";
+						game = {
+							name: "awesomebot.xyz",
+							url: "http://awesomebot.xyz"
+						};
+					}
+					bot.editStatus(req.body["status"], game);
+					saveMaintainerConsoleOptions(consolemember, req, res);
+				});
+			}
+		});
+	});
 
 	// Maintainer console commands
 	app.get("/dashboard/global-options/commands", (req, res) => {
@@ -1644,12 +2967,30 @@ module.exports = (bot, db, auth, config, winston) => {
 				config: {
 					pm_commands: config.pm_commands,
 					commands: config.commands,
+					pm_command_usages: config.pm_command_usages,
 					command_descriptions: config.command_descriptions,
 					disabled_commands: config.disabled_commands,
+					command_usages: config.command_usages,
 					admin_commands: config.admin_commands,
 					filtered_commands: config.filtered_commands
 				}
 			});
+		});
+	});
+	io.of("/dashboard/global-options/commands").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/global-options/commands", (req, res) => {
+		checkAuth(req, res, consolemember => {
+			for(var key in req.body) {
+				if(config[key]) {
+					try {
+						config[key] = JSON.parse(req.body[key]);
+					} catch(err) {}
+				}
+			}
+
+			saveMaintainerConsoleOptions(consolemember, req, res);
 		});
 	});
 
@@ -1666,9 +3007,22 @@ module.exports = (bot, db, auth, config, winston) => {
 				},
 				currentPage: req.path,
 				config: {
+					header_image: config.header_image,
 					homepage_message_html: config.homepage_message_html
-				}
+				},
+				dirname: __dirname
 			});
+		});
+	});
+	io.of("/dashboard/global-options/homepage").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/global-options/homepage", (req, res) => {
+		checkAuth(req, res, consolemember => {
+			config.homepage_message_html = req.body["homepage_message_html"];
+			config.header_image = req.body["header_image"];
+
+			saveMaintainerConsoleOptions(consolemember, req, res);
 		});
 	});
 
@@ -1692,11 +3046,34 @@ module.exports = (bot, db, auth, config, winston) => {
 							id: usr.id,
 							avatar: usr.avatarURL || "/img/discord-icon.png"
 						};
-					}).sort((a, b) => {
-						return a.name.localeCompare(b.name);
 					})
-				}
+				},
+				showRemove: consolemember.id=="115165640670576644"
 			});
+		});
+	});
+	io.of("/dashboard/global-options/maintainers").on("connection", socket => {
+		socket.on('disconnect', () => {});
+	});
+	app.post("/dashboard/global-options/maintainers", (req, res) => {
+		checkAuth(req, res, consolemember => {
+			if(req.body["new-user"]) {
+				var usr = findQueryUser(req.body["new-user"], bot.users);
+				if(usr && config.maintainers.indexOf(usr.id)==-1) {
+					config.maintainers.push(usr.id);
+				}
+			} else {
+				if(consolemember.id=="115165640670576644") {
+					for(var i=0; i<config.maintainers.length; i++) {
+						if(req.body["maintainer-" + i + "-removed"]!=null) {
+							config.maintainers[i] = null;
+						}
+					}
+					config.maintainers.spliceNullElements();
+				}
+			}
+
+			saveMaintainerConsoleOptions(consolemember, req, res);
 		});
 	});
 
@@ -1711,50 +3088,43 @@ module.exports = (bot, db, auth, config, winston) => {
 	    res.redirect("/activity");
 	});
 
-	// Any other requests (redirect to error page)
-	app.get("*", (req, res) => {
-		res.status(404);
+	// Error page
+	app.get("/error", (req, res) => {
 		res.render("pages/error.ejs");
-	});
-
-	app.use((req, res, next) => {
-	    res.header("Access-Control-Allow-Origin", "*");
-		res.header('Access-Control-Allow-Credentials', true);
-	    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-	    next();
-	});
-
-	// Handle errors (redirect to error page)
-	app.use(function(error, req, res, next) {
-		winston.error(error);
-	    res.status(500);
-	    res.render("pages/error.ejs", {error: error});
-	});
-
-	// Open web interface
-	app.listen(config.server_port, config.server_ip, () => {
-        winston.info("Opened web interface on " + config.server_ip + ":" + config.server_port);
-        process.setMaxListeners(0);
-    });
+	})
 };
 
 function findQueryUser(query, list) {
+	query = query.replaceAll("#", "----");
 	var usr = list.get(query);
 	if(!usr) {
 		var usernameQuery = query.substring(0, query.lastIndexOf("----")>-1 ? query.lastIndexOf("----") : query.length);
-		var discriminatorQuery = query.substring(query.lastIndexOf("----")+4);
-		var usrs = list.filter(usr => {
-			return usr.username==usernameQuery;
+		var discriminatorQuery = query.indexOf("----")>-1 ? query.substring(query.lastIndexOf("----")+4) : "";
+		var usrs = list.filter(a => {
+			return (a.user || a).username==usernameQuery;
 		});
 		if(discriminatorQuery) { 
-			usr = usrs.filter(a => {
-				return a.discriminator==discriminatorQuery;
-			})[0];
+			usr = usrs.find(a => {
+				return (a.user || a).discriminator==discriminatorQuery;
+			});
 		} else if(usrs.length>0) {
 			usr = usrs[0];
 		}
 	}
 	return usr;
+}
+
+function parseCommandOptions(svr, serverDocument, command, data) {
+	serverDocument.config.commands[command].isEnabled = data[command + "-isEnabled"]=="on";
+	serverDocument.config.commands[command].isAdminOnly = data[command + "-isAdminOnly"]=="true";
+	serverDocument.config.commands[command].disabled_channel_ids = [];
+	svr.channels.forEach(ch => {
+		if(ch.type==0) {
+			if(data[command + "-disabled_channel_ids-" + ch.id]==null) {
+				serverDocument.config.commands[command].disabled_channel_ids.push(ch.id);
+			}
+		}
+	});
 }
 
 function getUserList(list) {
@@ -1801,3 +3171,14 @@ function getAuthUser(user) {
 		avatar: user.avatar ? ("https://cdn.discordapp.com/avatars/" + user.id + "/" + user.avatar + ".jpg") : "/img/discord-icon.png"
 	};
 }
+
+Object.assign(Array.prototype, {
+	spliceNullElements() {
+		for(var i=0; i<this.length; i++) {
+			if(this[i]==null) {
+				this.splice(i, 1);
+				i--;
+			}
+		}
+	}
+});

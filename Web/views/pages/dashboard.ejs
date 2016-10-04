@@ -3,9 +3,31 @@
 <head>
 	<title>AwesomeBot Dashboard</title>
 	<% include ../partials/head %>
+
+	<script>
+	var mq = window.matchMedia("screen and (max-width: 768px)");
+	mq.addListener(mediaStyle);
+	function mediaStyle() {
+		if(mq.matches) {
+			$(".server-icon").removeClass("is-48x48");
+			$(".server-icon").addClass("is-32x32");
+			$(".server-name").removeClass("is-2");
+			$(".server-name").addClass("is-3");
+			$(".server-arrow").removeClass("is-large");
+			$(".server-arrow").addClass("is-medium");
+		} else {
+			$(".server-icon").removeClass("is-32x32");
+			$(".server-icon").addClass("is-48x48");
+			$(".server-name").removeClass("is-3");
+			$(".server-name").addClass("is-2");
+			$(".server-arrow").removeClass("is-medium");
+			$(".server-arrow").addClass("is-large");
+		}
+	}
+	</script>
 </head>
-<body onload="loadBackground();">
-	<section id="header" class="hero is-primary is-fullheight is-bold" style="background: url('/img/header-bg.jpg'); background-size: cover;" ondblclick="loadBackground();">
+<body onload="mediaStyle();">
+	<section id="header" class="hero is-primary is-fullheight is-bold" style="background: url('/header-image');background-size: cover;" ondblclick="">
 		<div class="hero-head">
 			<% include ../partials/header %>
 		</div>
@@ -31,16 +53,16 @@
 								<a class="media" href="/dashboard/overview?svrid=<%= serverData[i].id %>">
 							<% } %>
 								<figure class="media-left">
-									<p class="image is-48x48">
+									<p class="image server-icon is-48x48">
 										<img src="<%= serverData[i].icon %>" style="border-radius: 100%;" alt="<%= serverData[i].id %>">
 									</p>
 								</figure>
 								<div class="media-content">
-									<h2 class="title is-2"><%= serverData[i].name %></h2>
+									<h2 class="title is-2 server-name"><%= serverData[i].name %></h2>
 								</div>
 								<% if(serverData[i].botJoined && serverData[i].isAdmin) { %>
 									<div class="media-right">
-										<span class="icon is-large">
+										<span class="icon server-arrow is-large">
 					                        <i class="fa fa-chevron-right"></i>
 					                    </span>
 									</div>

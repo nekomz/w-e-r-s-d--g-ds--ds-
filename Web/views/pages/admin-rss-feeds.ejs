@@ -24,7 +24,7 @@
 		if(newRssUrl.val() && newRssName.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-url": newRssUrl.val(),
 					"new-name": newRssName.val().toLowerCase()
@@ -54,13 +54,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -76,7 +77,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<% var commandData = configData.commands.rss;commandData.name = "rss";commandData.description = commandDescriptions.rss; %>
 							<% include ../partials/admin-command-item %>
 							<div style="overflow-x: scroll;">
@@ -123,17 +124,19 @@
 																</h4>
 																<p class="control">
 																	<label class="checkbox">
-																	<input name="rss-<%= i %>-streaming-isEnabled" type="checkbox" <%= configData.rss_feeds[i].streaming.isEnabled ? "checked" : "" %>>
+																	<input name="rss-<%= i %>-streaming-isEnabled" type="checkbox" onclick="$('#rss-<%= i %>-streaming-options').toggleClass('is-hidden');" <%= configData.rss_feeds[i].streaming.isEnabled ? "checked" : "" %>>
 																		Send <strong>streaming RSS updates</strong> in these channels:
 																	</label>
-																	<% for(var j=0; j<channelData.length; j++) { %>
-																		<br>
-																		&nbsp;&nbsp;&nbsp;
-																		<label class="checkbox">
-																		<input name="rss-<%= i %>-streaming-enabled_channel_ids-<%= channelData[j].id %>" type="checkbox" <%= configData.rss_feeds[i].streaming.enabled_channel_ids.indexOf(channelData[i].id)>-1 ? "checked" : "" %>>
-																			#<%= channelData[j].name %>
-																		</label>
-																	<% } %>
+																	<span id="rss-<%= i %>-streaming-options" class="<%= configData.rss_feeds[i].streaming.isEnabled ? '' : 'is-hidden' %>">
+																		<% for(var j=0; j<channelData.length; j++) { %>
+																			<br>
+																			&nbsp;&nbsp;&nbsp;
+																			<label class="checkbox">
+																			<input name="rss-<%= i %>-streaming-enabled_channel_ids-<%= channelData[j].id %>" type="checkbox" <%= configData.rss_feeds[i].streaming.enabled_channel_ids.indexOf(channelData[j].id)>-1 ? "checked" : "" %>>
+																				#<%= channelData[j].name %>
+																			</label>
+																		<% } %>
+																	</span>
 																</p>
 															</div>
 														</div>
@@ -160,7 +163,7 @@
 							</div>
 							<div class="control is-grouped">
 								<p class="control is-expanded">
-									<input id="new-rss-url" class="input" type="text" placeholder="RSS URL" onkeypress="return event.keyCode != 13;">
+									<input id="new-rss-url" class="input" type="url" placeholder="RSS URL" onkeypress="return event.keyCode != 13;">
 								</p>
 								<p class="control">
 									<p class="control has-addons">

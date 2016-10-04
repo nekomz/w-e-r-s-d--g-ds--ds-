@@ -15,10 +15,6 @@
 <script src="/js/bulma.js"></script>
 
 <script>
-function loadBackground() {
-    document.getElementById("header").style.backgroundImage = "url('/img/header-bg-" + (Math.floor(Math.random() * (53)) + 1) + ".jpg')";
-}
-
 function setUserAutocomplete(svrid) {
 	$.getJSON("/userlist" + (svrid ? ("?svrid=" + svrid) : ""), function(data) {
 		new autoComplete({

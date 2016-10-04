@@ -34,8 +34,8 @@
 	};
 	</script>
 </head>
-<body onload="loadBackground();">
-	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/img/header-bg.jpg'); background-size: cover;" ondblclick="loadBackground();">
+<body>
+	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/header-image');background-size: cover;" ondblclick="">
 		<div class="hero-head">
 			<% include ../partials/header %>
 		</div>
@@ -49,7 +49,7 @@
 					</span>
 				</h3>
 				<h1 class="title is-1">
-					<strong><%= totalMessageCount %></strong> messages today, <strong><%= numActiveServers %></strong> active servers
+					<strong><%= totalMessageCount %></strong> message<%= totalMessageCount==1 ? "" : "s" %> today, <strong><%= numActiveServers %></strong> active server<%= numActiveServers==1 ? "" : "s" %>
 				</h1>
 			</div>
 			<br><br>
@@ -78,7 +78,7 @@
 			<div class="container">
 				<div class="tabs is-centered">
 					<ul>
-						<li class="subtitle is-5">Last updated <%= updatedPrettyDate %></li>
+						<li class="subtitle is-6">Last updated <%= updatedPrettyDate %></li>
 					</ul>
 				</div>
 			</div>

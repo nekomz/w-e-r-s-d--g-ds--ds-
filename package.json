@@ -2,10 +2,10 @@
     "name": "AwesomeBotNeo",
     "description": "The best Discord bot!",
     "version": "0.1.1",
-    "author": "BitQuote, mistmurk",
+    "author": "BitQuote",
     "repository": {
         "type": "git",
-        "url": "https://github.com/mistmurk/AwesomeBotNeo.git"
+        "url": "https://github.com/BitQuote/AwesomeBot.git"
     },
     "license": "GPL v2",
     "dependencies": {
@@ -20,11 +20,14 @@
         "mongoose-findorcreate": ">=0.1.2",
         "mongoose-function": ">=0.1.0",
         "express": ">=4.0.0",
+        "socket.io": ">=1.4.0",
         "ejs": ">=1.0.0",
         "body-parser": "*",
+        "cookie-parser": "*",
         "express-session": ">=1.14",
         "connect-mongo": ">=1.3.0",
         "passport": ">=0.3.2",
+        "passport.socketio": "*",
         "passport-discord": ">=0.1.1",
         "feed-read": "*",
         "remove-markdown": "*",
@@ -33,7 +36,7 @@
         "searchitunes": "*",
         "imgur-node-api": "*",
         "showdown": "*",
-        "remove-markdown": "*",
+        "node-base64-image": ">=1.0.1",
         "xml-parser": "*",
         "write-file-atomic": ">=1.2.0",
         "vm2": ">=3.1.0",

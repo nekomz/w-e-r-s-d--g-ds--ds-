@@ -17,7 +17,7 @@
 		if(newReactionMessage.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-message": newReactionMessage.val()
 				},
@@ -30,13 +30,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -52,10 +53,10 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<p class="control">
 								<label class="checkbox">
-								<input name="tag_reaction-isEnabled" type="checkbox" onclick="$('#tag_reaction-options').toggleClass('is-hidden');" <%= configData.tag_reaction.isEnabled ? "checked" : "" %>>
+								<input name="isEnabled" type="checkbox" onclick="$('#tag_reaction-options').toggleClass('is-hidden');" <%= configData.tag_reaction.isEnabled ? "checked" : "" %>>
 									Repond when tagged in chat
 								</label>
 							</p>
@@ -67,7 +68,7 @@
 												<i class="fa fa-times"></i>
 											</span>
 										</button>
-										<%- configData.tag_reaction.messages[i].replace("@user", "<strong>@user</strong>") %>
+										<%- configData.tag_reaction.messages[i].replace("@user", "<strong>@user</strong>").replace("@mention", "<strong>@mention</strong>") %>
 									</li>
 								<% } %>
 							</ul>
@@ -76,7 +77,7 @@
 								<div class="control is-grouped">
 									<p class="control is-expanded">
 										<input id="new-reaction-message" class="input" type="text" maxlength="2000" placeholder="Response message" onkeypress="return event.keyCode != 13;">
-										<span class="help">Type <code>@user</code> for a user mention.</span>
+										<span class="help"><code>@mention</code> to mention member. <code>@user</code> for username.</span>
 									</p>
 									<p class="control">
 										<a class="button is-primary" onclick="newReaction();">

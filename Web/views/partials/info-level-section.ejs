@@ -3,11 +3,11 @@
 		<div class="container">
 			<nav class="level is-mobile">
 				<div class="level-item has-text-centered">
-					<p class="heading">Servers</p>
+					<p class="heading">Server<%= rawServerCount==1 ? "" : "s" %></p>
 					<p class="title is-2"><%= rawServerCount %></p>
 				</div>
 				<div class="level-item has-text-centered">
-					<p class="heading">Users</p>
+					<p class="heading">User<%= rawUserCount==1 ? "" : "s" %></p>
 					<p class="title is-2"><%= rawUserCount %></p>
 				</div>
 				<div class="level-item has-text-centered" title="<%= rawUptime %>">

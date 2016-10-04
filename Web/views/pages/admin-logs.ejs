@@ -3,29 +3,14 @@
 <head>
 	<title><%= serverData.name %> Logs - AwesomeBot Admin Console</title>
 	<% include ../partials/head %>
-
-	<script>
-	function endSession(name) {
-		$.ajax({
-			type: "POST",
-			url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
-			data: {
-				"end": name
-			},
-			success: function() {
-				window.location.reload();
-			}
-		});
-	}
-	</script>
 </head>
-<body onload="loadBackground();">
+<body>
 	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -43,21 +28,49 @@
 					</div>
 					<br>
 					<div class="container">
+						<form id="search-form" action="<%= currentPage %>" method="get">
+							<input name="svrid" type="hidden" value="<%= serverData.id %>">
+							<p class="control has-addons has-addons-centered">
+								<span class="select">
+									<select name="chid" onchange="$('#search-form').submit();">
+										<option value="">All Channels</option>
+										<% for(var i=0; i<channelData.length; i++) { %>
+											<option value="<%= channelData[i].id %>" <%= channelQuery==channelData[i].id ? "selected" : "" %>>#<%= channelData[i].name %></option>
+										<% } %>
+									</select>
+								</span>
+								<input name="q" class="input is-expanded" type="text" placeholder="I'm looking for..." value="<%= searchQuery %>">
+								<button type="submit" class="button">
+									<span class="icon is-small">
+										<i class="fa fa-search"></i>
+									</span>
+									<span>Search</span>
+								</button>
+							</p>
+						</form>
+						<br>
 						<% for(var i=0; i<logData.length; i++) { %>
-							<div class="card is-fullwidth">
-								<header class="card-header">
-									<p class="card-header-title">
-										#<%= logData[i].chid %>, @<%= logData[i].usrid %> at <%= logData[i].timestamp %>
-									</p>
-									<a class="card-header-icon">
+							<article class="media">
+								<figure class="media-left">
+									<span class="icon" style="color: <%= logData[i].levelColor %>;">
 										<i class="fa fa-<%= logData[i].level %>"></i>
-									</a>
-								</header>
-								<div class="card-content">
-									<%= logData[i].message %>
+									</span>
+								</figure>
+								<div class="media-content">
+									<div class="content">
+										<p>
+											<strong>
+												<%- logData[i].ch ? ("<span title=" + logData[i].chid  + ">#" + logData[i].ch + "</span>") : "" %><%- (logData[i].ch && logData[i].usr) ? ", " : "" %><%- logData[i].usr ? ("<span title=" + logData[i].usrid + ">@" + logData[i].usr + "</span>") : "" %><% (!logData[i].ch && !logData[i].usr) ? "General" : "" %>
+											</strong>
+											<small>
+												<%= logData[i].timestamp %>
+											</small>
+											<br>
+											<%= logData[i].message %>
+										</p>
+									</div>
 								</div>
-							</div>
-							<br>
+							</article>
 						<% } %>
 					</div>
 				</div>

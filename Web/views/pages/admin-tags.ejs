@@ -25,7 +25,7 @@
 		if(newTagName.val() && newTagContent.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-name": newTagName.val(),
 					"new-type": newTagType.val(),
@@ -40,13 +40,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();saveFormState();">
+<body onload="saveFormState();">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -62,7 +63,7 @@
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<h4 class="subtitle is-4">
 								General
 							</h4>
@@ -143,9 +144,9 @@
 													<td>
 														<p class="control">
 															<span class="select is-small">
-																<select name="tag-<%= configData.tags.list[i].index %>-isCommand" value="<%= configData.tags.list[i].isCommand ? 'command' : 'text' %>">
-																	<option value="text">Text</option>
-																	<option value="command">Command</option>
+																<select name="tag-<%= configData.tags.list[i].index %>-isCommand">
+																	<option value="text" <%= configData.tags.list[i].isCommand ? "" : "selected" %>>Text</option>
+																	<option value="command" <%= configData.tags.list[i].isCommand ? "selected" : "" %>>Command</option>
 																</select>
 															</span>
 														</p>

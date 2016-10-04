@@ -1,0 +1,173 @@
+<script>
+function addToServer(extid, svrid) {
+	$.ajax({
+		type: "POST",
+		url: "/dashboard/other/extensions?svrid=" + svrid,
+		data: {
+			"new-<%= mode %>": extid
+		},
+		success: function(data) {
+			window.location.href = "/dashboard/other/extensions?svrid=" + svrid;
+		}
+	});
+}
+
+function doAction(extid, action) {
+	var data = {
+		"action": action
+	};
+	if(["reject", "remove"].indexOf(action)>-1) {
+		var reason = prompt("Reason to " + action + ":");
+		if(reason) {
+			data.reason = reason;
+		} else {
+			return;
+		}
+	}
+	$.ajax({
+		type: "POST",
+		url: "/extensions?extid=" + extid,
+		data: data,
+		success: function(data) {
+			window.location.reload();
+		}
+	});
+}
+</script>
+
+<% if(extensions.length>0) { %>
+	<div class="columns">
+	<% for(var i=0; i<extensions.length; i++) { %>
+		<div class="column is-one-third">
+			<div class="card is-fullwidth">
+				<header class="card-header">
+					<p class="card-header-title">
+						<%= extensions[i].name %>
+						&nbsp;
+						<% if(extensions[i].featured) { %>
+							<span class="tag is-primary">Featured</span>
+							&nbsp;
+						<% } %>
+						<span class="tag is-warning">
+							<span><%= extensions[i].points %></span>
+							&nbsp;
+							<span class="icon is-small">
+		                        <i class="fa fa-star"></i>
+		                    </span>
+						</span>
+					</p>
+					<span class="card-header-icon" title="<%= extensions[i].typeDescription %>">
+						<i class="fa fa-<%= extensions[i].typeIcon %>"></i>
+					</span>
+				</header>
+				<div class="card-content" style="max-height: 300px;overflow-y: scroll;">
+					<div class="content">
+						<%- extensions[i].description %>
+					</div>
+					<div class="media">
+						<div class="media-left">
+							<figure class="image is-32x32">
+								<img src="<%= extensions[i].owner.avatar %>" alt="<%= extensions[i].owner.id %>">
+							</figure>
+						</div>
+						<div class="media-content">
+							<p class="title is-5"><%= extensions[i].owner.name + "#" + extensions[i].owner.discriminator %></p>
+							<p class="subtitle is-6">Last updated <strong><%= extensions[i].relativeLastUpdated==0 ? "today" : (extensions[i].relativeLastUpdated + " day" + (extensions[i].relativeLastUpdated==1 ? "" : "s") + " ago") %></strong></p>
+						</div>
+					</div>
+				</div>
+				<footer class="card-footer">
+					<% if(authUser && serverData.length>0) { %>
+						<a class="card-footer-item modal-button" data-target="#add-<%= extensions[i]._id %>-modal">
+							Get
+						</a>
+						<div id="add-<%= extensions[i]._id %>-modal" class="modal">
+							<div class="modal-background"></div>
+							<div class="modal-container">
+								<div class="modal-content">
+									<div class="box">
+										<% for(var j=0; j<serverData.length; j++) { %>
+											<a class="media" onclick="addToServer('<%= extensions[i]._id %>', '<%= serverData[j].id %>');">
+												<div class="media-left">
+													<img class="image is-32x32" src="<%= serverData[j].icon %>" alt="<%= serverData[j].id %>">
+												</div>
+												<div class="media-content">
+													<p class="title is-3"><%= serverData[j].name %></p>
+												</div>
+												<div class="media-right">
+													<span class="icon is-medium">
+								                        <i class="fa fa-plus"></i>
+								                    </span>
+												</div>
+											</a>
+										<% } %>
+									</div>
+								</div>
+							</div>
+							<button class="modal-close"></button>
+						</div>
+					<% } else { %>
+						<a class="card-footer-item" href="/extension.abext?extid=<%= extensions[i]._id %>">
+							Download
+						</a>
+					<% } %>
+					<% if(authUser) { %>
+						<a class="card-footer-item" onclick="doAction('<%= extensions[i]._id %>', 'upvote');">
+							<%= upvotedData.indexOf(extensions[i]._id)==-1 ? "+1" : "-1" %>
+						</a>
+						<% if(isMaintainer) { %>
+							<% if(mode=="gallery") { %>
+								<a class="card-footer-item" onclick="doAction('<%= extensions[i]._id %>', 'feature');">
+									<%= extensions[i].featured ? "Unfeature" : "Feature" %>
+								</a>
+								<a class="card-footer-item" onclick="doAction('<%= extensions[i]._id %>', 'remove');">
+									Remove
+								</a>
+							<% } else if(mode=="queue") { %>
+								<a class="card-footer-item" onclick="doAction('<%= extensions[i]._id %>', 'accept');">
+									Accept
+								</a>
+								<a class="card-footer-item" onclick="doAction('<%= extensions[i]._id %>', 'reject');">
+									Reject
+								</a>
+							<% } %>
+						<% } %>
+					<% } %>
+				</footer>
+			</div>
+		</div>
+
+		<% if(i % 3==1 && i!=extensions.length-1 && i!=0) { %>
+			</div>
+			<div class="columns">
+		<% } %>
+	<% } %>
+	</div>
+<% } else { %>
+	<div class="box hero is-small is-light">
+		<div class="hero-body">
+			<div class="container has-text-centered">
+				<h2 class="subtitle">
+					<span>Wow, this place is empty</span>
+					<span class="icon">
+						<i class="fa fa-meh-o"></i>
+					</span>
+				</h2>
+				<% if(activeSearchQuery) { %>
+					<p class="hero-buttons">
+						<a class="button is-medium" href="/extensions/<%= mode %>">
+							<span class="icon">
+								<i class="fa fa-chevron-left"></i>
+							</span>
+							<span>Reset search</span>
+						</a>
+					</p>
+				<% } else { %>
+					<h1 class="title">
+						Nothing in <strong><%= mode %></strong>
+					</h1>
+				<% } %>
+			</div>
+		</div>
+	</div>
+<% } %>

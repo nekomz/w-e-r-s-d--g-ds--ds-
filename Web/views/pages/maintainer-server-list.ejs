@@ -21,13 +21,13 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();">
+<body>
 	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/maintainer-menu %>
 				</div>
 				<div class="column">
@@ -100,7 +100,7 @@
 											</a>
 										</p>
 										<p class="control">
-											<a class="button is-info" href="/activity/servers?q=<%= activeSearchQuery %>">
+											<a class="button is-info" href="/activity/servers?q=<%= data[selectedServer].name %>">
 												<span class="icon is-small">
 											        <i class="fa fa-info"></i>
 											    </span>

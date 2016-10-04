@@ -4,13 +4,13 @@
 	<title><%= serverData.name %> Maintainer Console</title>
 	<% include ../partials/head %>
 </head>
-<body onload="loadBackground();">
+<body>
 	<% include ../partials/dashboard-header %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/maintainer-menu %>
 				</div>
 				<div class="column">
@@ -32,7 +32,7 @@
 									<span class="icon">
 					                    <i class="fa fa-server"></i>
 					                </span>
-									servers
+									server<%= serverCount==1 ? "" : "s" %>
 								</h2>
 							</div>
 							<br>
@@ -56,7 +56,7 @@
 									<span class="icon">
 					                    <i class="fa fa-comments-o"></i>
 					                </span>
-									messages today
+									message<%= totalMessageCount==1 ? "" : "s" %> today
 								</h2>
 							</div>
 							<br>
@@ -69,6 +69,30 @@
 					                    <i class="fa fa-clock-o"></i>
 					                </span>
 									process uptime
+								</h2>
+							</div>
+							<br>
+							<div class="container has-text-centered">
+								<h1 class="title">
+									<strong><%= shardCount %></strong>
+								</h1>
+								<h2 class="subtitle">
+									<span class="icon">
+					                    <i class="fa fa-puzzle-piece"></i>
+					                </span>
+									shard<%= shardCount==1 ? "" : "s" %>
+								</h2>
+							</div>
+							<br>
+							<div class="container has-text-centered">
+								<h1 class="title">
+									<strong><%= version %></strong>
+								</h1>
+								<h2 class="subtitle">
+									<span class="icon">
+					                    <i class="fa fa-code-fork"></i>
+					                </span>
+									bot version
 								</h2>
 							</div>
 						</div>

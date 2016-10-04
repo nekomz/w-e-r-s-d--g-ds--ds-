@@ -326,17 +326,17 @@ module.exports = (bot, db, config, winston) => {
 
 	// Start all timer extensions (third-party)
 	function runTimerExtensions() {
-		db.servers.find({"config.extensions": {$not: {$size: 0}}}, (err, serverDocuments) => {
+		db.servers.find({"extensions": {$not: {$size: 0}}}, (err, serverDocuments) => {
 			if(err) {
 				winston.error("Failed to find server data to start timer extensions", err);
 			} else {
 				for(var i=0; i<serverDocuments.length; i++) {
 					var svr = bot.guilds.get(serverDocuments[i]._id);
 					if(svr) {
-						for(var j=0; j<serverDocuments[i].config.extensions.length; j++) {
-							if(serverDocuments[i].config.extensions[j].type=="timer") {
+						for(var j=0; j<serverDocuments[i].extensions.length; j++) {
+							if(serverDocuments[i].extensions[j].type=="timer") {
 								setTimeout(() => {
-									runTimerExtension(svr, serverDocuments[i].config.extensions[j]);
+									runTimerExtension(svr, serverDocuments[i].extensions[j]);
 								}, (extensionDocument.last_run + extensionDocument.interval) - Date.now());
 							}
 						}

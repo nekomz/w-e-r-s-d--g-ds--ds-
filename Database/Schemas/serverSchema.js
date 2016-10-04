@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 module.exports = new mongoose.Schema({
 	_id: {type: String, required: true},
 	config: require("./serverConfigSchema.js"),
+	extensions: [require("./modulesSchema.js")],
 	members: [require("./serverMembersSchema.js")],
 	games: [require("./serverGamesSchema.js")],
 	channels: [require("./serverChannelsSchema.js")],

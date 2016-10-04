@@ -18,7 +18,7 @@
 		if(newBlockMember.val()) {
 			$.ajax({
 				type: "POST",
-				url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+				url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 				data: {
 					"new-member": newBlockMember.val()
 				},
@@ -30,13 +30,14 @@
 	}
 	</script>
 </head>
-<body onload="loadBackground();setUserAutocomplete('<%= serverData.id %>');">
+<body onload="setUserAutocomplete('<%= serverData.id %>');">
 	<% include ../partials/dashboard-header %>
+	<% include ../partials/dashboard-socket-updates %>
 		
 	<section class="section is-white">
 		<div class="container">
 			<div class="columns">
-				<div class="column is-one-quarter">
+				<div id="menu" class="column is-one-quarter">
 					<% include ../partials/admin-menu %>
 				</div>
 				<div class="column">
@@ -47,14 +48,14 @@
 						<article class="message is-primary">
 							<div class="message-body">
 								<div class="content">
-									These users will <strong>not</strong> be permitted to use the bot at all on this server, including PM commands that reference this server. Filters will <strong>still apply</strong> to blocked members, however.
+									These users will <strong>not</strong> be permitted to use the bot at all on this server, including PM commands that reference this server. Filters will <strong>still apply</strong> to blocked members, however. You can't block members that have an admin level of 1 or higher.
 								</div>
 							</div>
 						</article>
 					</div>
 					<br>
 					<div class="container">
-						<form id="form" action="/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>" method="post">
+						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
 							<div style="overflow-x: scroll;">
 								<% if(configData.blocked.length>0) { %>
 									<table class="table">

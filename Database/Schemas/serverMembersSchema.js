@@ -12,7 +12,7 @@ module.exports = new mongoose.Schema({
 	cannotAutokick: {type: Boolean, default: false},
 	strikes: [new mongoose.Schema({
 		_id: {type: String, required: true},
-		reason: {type: String, required: true},
+		reason: {type: String, required: true, maxlength: 2000},
 		timestamp: {type: Date, default: Date.now}
 	})],
 	isPointsCooldownOngoing: {type: Boolean, default: false},

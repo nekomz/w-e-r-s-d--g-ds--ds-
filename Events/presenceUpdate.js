@@ -1,6 +1,6 @@
 // User status changed (afk, new game, etc.)
 module.exports = (bot, db, config, winston, member, oldpresence) => {
-	if(member.id!=bot.user.id && !member.bot) {
+	if(member.id!=bot.user.id && !member.user.bot) {
 		db.servers.findOne({_id: member.guild.id}, (err, serverDocument) => {
 			if(!err && serverDocument) {
 				if(serverDocument.config.moderation.isEnabled) {

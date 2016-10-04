@@ -3,7 +3,7 @@ const checkFiltered = require("./../Modules/FilterChecker.js");
 
 // Message updated (edited, pinned, etc.)
 module.exports = (bot, db, config, winston, msg, oldmsgdata) => {
-	if(msg && msg.channel.guild && msg.author.id!=bot.user.id && !msg.author.bot) {
+	if(msg && oldmsgdata && msg.channel.guild && msg.author.id!=bot.user.id && !msg.author.bot) {
         // Get server data
 		db.servers.findOne({_id: msg.channel.guild.id}, (err, serverDocument) => {
 			if(!err && serverDocument) {
@@ -47,13 +47,13 @@ module.exports = (bot, db, config, winston, msg, oldmsgdata) => {
 					}
 
 	                // Apply keyword extensions again
-	                for(var i=0; i<serverDocument.config.extensions.length; i++) {
-						if(serverDocument.config.extensions[i].type=="keyword" && (!serverDocument.config.extensions[i].isAdminOnly || memberBotAdmin>0) && serverDocument.config.extensions[i].enabled_channel_ids.indexOf(msg.channel.id)>-1) {
-							var keywordMatch = msg.content.containsArray(serverDocument.config.extensions[i].keywords);
-							if(((serverDocument.config.extensions[i].keywords.length>1 || serverDocument.config.extensions[i].keywords[0]!="*") && keywordMatch.selectedKeyword>-1) || (serverDocument.config.extensions[i].keywords.length==1 && serverDocument.config.extensions[i].keywords[0]=="*")) {
-								winston.info("Treating '" + msg.cleanContent + "' as a trigger for keyword extension '" + serverDocument.config.extensions[i]._id + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+	                for(var i=0; i<serverDocument.extensions.length; i++) {
+						if(serverDocument.extensions[i].type=="keyword" && (!serverDocument.extensions[i].isAdminOnly || memberBotAdmin>0) && serverDocument.extensions[i].enabled_channel_ids.indexOf(msg.channel.id)>-1) {
+							var keywordMatch = msg.content.containsArray(serverDocument.extensions[i].keywords);
+							if(((serverDocument.extensions[i].keywords.length>1 || serverDocument.extensions[i].keywords[0]!="*") && keywordMatch.selectedKeyword>-1) || (serverDocument.extensions[i].keywords.length==1 && serverDocument.extensions[i].keywords[0]=="*")) {
+								winston.info("Treating '" + msg.cleanContent + "' as a trigger for keyword extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 								extensionApplied = true;
-								runExtension(bot, db, winston, msg.channel.guild, msg.channel, serverDocument.config.extensions[i], msg, null, keywordMatch);
+								runExtension(bot, db, winston, msg.channel.guild, msg.channel, serverDocument.extensions[i], msg, null, keywordMatch);
 							}
 						}
 					}
