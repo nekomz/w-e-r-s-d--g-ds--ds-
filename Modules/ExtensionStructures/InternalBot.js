@@ -9,6 +9,11 @@ module.exports = class Bot {
 		this.uptime = process.uptime();
 		this.connectionUptime = bot.uptime;
 
+		this.awaitMessage = (chid, usrid, filter, callback) => {
+			if(svr.channels.get(chid) && svr.members.get(usrid)) {
+				bot.awaitMessage(chid, usrid, filter, callback);
+			}
+		};
 		this.sendArray = bot.sendArray;
 		this.messageBotAdmins = message => {
 			bot.messageBotAdmins(svr, serverDocument, message);

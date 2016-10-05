@@ -11,9 +11,6 @@
 	mq.addListener(mediaStyle);
 
 	var searchInputAutocomplete;
-	function switchSearch(type) {
-		window.location.href = "/activity/" + type;
-	}
 	function mediaStyle(mq) {
 		if(mq.matches) {
 			$(".header-search-box").removeClass("is-large");
@@ -35,95 +32,113 @@
 	</script>
 </head>
 <body>
-	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/header-image');background-size: cover;" ondblclick="">
+	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/header-image');background-size: cover;">
 		<div class="hero-head">
 			<% include ../partials/header %>
 		</div>
-		<br><br>
 		<div class="hero-body">
 			<div class="container has-text-centered">
-				<h3 class="subtitle is-3">
-					How are you, AwesomeBot?
-					<span class="icon is-medium">
-						<i class="fa fa-thumbs-up"></i>
-					</span>
-				</h3>
 				<h1 class="title is-1">
 					<strong><%= totalMessageCount %></strong> message<%= totalMessageCount==1 ? "" : "s" %> today, <strong><%= numActiveServers %></strong> active server<%= numActiveServers==1 ? "" : "s" %>
 				</h1>
-			</div>
-			<br><br>
-			<div class="columns">
-				<div class="column is-half is-offset-one-quarter">
-					<p class="control has-addons has-addons-centered">
-						<span class="select is-large header-search-box">
-							<select id="search-select" onchange="switchSearch(this.value);">
-								<option value="servers"<%= mode=="servers" ? " selected" : "" %>>Servers</option>
-								<option value="users" <%= mode=="users" ? " selected" : "" %>>Users</option>
-							</select>
-						</span>
-						<input id="search-input" class="input is-expanded is-large header-search-box" type="text" placeholder="I'm looking for..." value="<%= activeSearchQuery.split('----').join('#') %>">
-						<a id="search-button" class="button is-primary is-large header-search-box">
-							<span class="icon">
-								<i class="fa fa-search"></i>
-							</span>
-							<span>Search</span>
-						</a>
-					</p>
+				<div class="columns">
+					<div class="column is-8 is-offset-2">
+						<p class="control has-addons has-addons-centered">
+							<input id="search-input" class="input is-expanded is-large header-search-box" type="text" placeholder="I'm looking for..." value="<%= activeSearchQuery.split('----').join('#') %>">
+							<a id="search-button" class="button is-primary is-large header-search-box">
+								<span class="icon">
+									<i class="fa fa-search"></i>
+								</span>
+								<span>Search</span>
+							</a>
+						</p>
+					</div>
 				</div>
 			</div>
 		</div>
-		<br><br>
 		<div class="hero-foot">
-			<div class="container">
-				<div class="tabs is-centered">
+			<nav class="tabs is-boxed is-fullwidth">
+				<div class="container">
 					<ul>
-						<li class="subtitle is-6">Last updated <%= updatedPrettyDate %></li>
+						<li class="<%= mode=='servers' ? 'is-active' : '' %>">
+							<a href="/activity/servers">
+								<span class="icon">
+									<i class="fa fa-server"></i>
+								</span>
+								Servers
+								<% if(mode=="servers") { %>
+									&nbsp;
+									<span class="tag is-small is-primary">
+										<%= rawServerCount %>
+									</span>
+								<% } %>
+							</a>
+						</li>
+						<li class="<%= mode=='users' ? 'is-active' : '' %>">
+							<a href="/activity/users">
+								<span class="icon">
+									<i class="fa fa-user"></i>
+								</span>
+								Users
+								<% if(mode=="users") { %>
+									&nbsp;
+									<span class="tag is-small is-primary">
+										<%= rawUserCount %>
+									</span>
+								<% } %>
+							</a>
+						</li>
 					</ul>
 				</div>
-			</div>
+			</nav>
 		</div>
 	</section>
 
-	<% include ../partials/info-level-section %>
-
-	<section id="frame" class="is-light">
-		<% if(mode=="servers") { %>
-			<% include ../partials/servers-section %>
-			<script>
-			switchLayout();
-			showSelections();
-			</script>
-		<% } else { %>
-			<% include ../partials/users-section %>
-		<% } %>
+	<section id="frame" class="section">
+		<div class="container">
+			<% if(mode=="servers") { %>
+				<% include ../partials/servers-section %>
+				<script>
+				switchLayout();
+				showSelections();
+				</script>
+			<% } else { %>
+				<% include ../partials/users-section %>
+			<% } %>
+		</div>
 	</section>
 
-	<section class="hero is-medium is-black">
+	<section class="hero is-small is-black">
 		<div class="hero-body">
 			<div class="container">
 				<div class="has-text-centered">
-					<h2 class="title is-2">
-						Want to <strong>configure AwesomeBot</strong> on a server?
-					</h2>
+					<% if(mode=="servers") { %>
+						<p class="hero-buttons">
+							<% if(authUser) { %>
+								<a class="button is-primary is-outlined is-large" href="/dashboard">
+									<span class="icon">
+										<i class="fa fa-cog"></i>
+									</span>
+									<span>Configure AwesomeBot on a server</span>
+								</a>
+							<% } else { %>
+								<a class="button is-primary is-outlined is-large" href="/login">
+									<span class="icon">
+										<i class="fa fa-sign-in"></i>
+									</span>
+									<span>Login to configure AwesomeBot</span>
+								</a>
+							<% } %>
+						</p>
+						<br>
+					</div>
+				<% } else { %>
 					<p class="hero-buttons">
-						<% if(authUser) { %>
-							<a class="button is-primary is-large" href="/dashboard">
-								<span class="icon">
-									<i class="fa fa-sign-in"></i>
-								</span>
-								<span>Go to my dashboard</span>
-							</a>
-						<% } else { %>
-							<a class="button is-primary is-outlined is-large" href="/login">
-								<span class="icon">
-									<i class="fa fa-sign-in"></i>
-								</span>
-								<span>Login to the admin console</span>
-							</a>
-						<% } %>
+						<h4 class="title is-4">
+							PM AwesomeBot <strong>profile setup</strong> to make your own profile.
+						</h4>
 					</p>
-				</div>
+				<% } %>
 			</div>
 		</div>
 	</section>

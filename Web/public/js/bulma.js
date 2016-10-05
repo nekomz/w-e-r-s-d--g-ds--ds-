@@ -6,7 +6,7 @@ function bulma() {
 
     $toggle.click(function() {
         $(this).toggleClass("is-active");
-        $menu.toggleClass("is-active");
+        $menu.slideToggle(86);
     });
 
     $(".modal-button").click(function() {

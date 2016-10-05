@@ -103,7 +103,7 @@ module.exports = (bot, db, auth, config, winston) => {
 			roundedServerCount: Math.floor(bot.guilds.size/100)*100,
 			rawUserCount: bot.users.size,
 			rawUptime: secondsToString(process.uptime()).slice(0, -1),
-			roundedUptime: Math.floor(process.uptime()/3600000)
+			roundedUptime: Math.floor(process.uptime()/3600)
 		});
 	});
 
@@ -226,13 +226,13 @@ module.exports = (bot, db, auth, config, winston) => {
 						}
 						renderPage({
 							pageTitle: pageTitle,
+							itemsPerPage: req.query.count,
+							currentPage: parseInt(req.query.page),
+							numPages: Math.ceil(serverData.length/((req.query.count=="0" ? serverData.length : parseInt(req.query.count)))),
 							serverData: serverData.slice(startItem, startItem + (req.query.count=="0" ? serverData.length : parseInt(req.query.count))),
 							selectedCategory: req.query.category,
 							isPublicOnly: req.query.publiconly,
-							sortOrder: req.query.sort,
-							itemsPerPage: req.query.count,
-							currentPage: req.query.page,
-							numPages: Math.ceil(bot.guilds.size/((req.query.count=="0" ? bot.guilds.size : parseInt(req.query.count))))
+							sortOrder: req.query.sort
 						});
 					});
 				} else if(req.path=="/activity/users") {
@@ -348,9 +348,6 @@ module.exports = (bot, db, auth, config, winston) => {
 						authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 						rawServerCount: bot.guilds.size,
 						rawUserCount: bot.users.size,
-						rawUptime: secondsToString(process.uptime()).slice(0, -1),
-						roundedUptime: Math.floor(process.uptime()/3600000),
-						updatedPrettyDate: prettyDate(new Date()),
 						totalMessageCount: messageCount,
 						numActiveServers: activeServers,
 						activeSearchQuery: req.query.q,
@@ -397,7 +394,7 @@ module.exports = (bot, db, auth, config, winston) => {
 		if(req.isAuthenticated()) {
 			if(req.query.extid && req.body.action) {
 				if(["accept", "feature", "reject", "remove"].indexOf(req.body.action)>-1 && config.maintainers.indexOf(req.user.id)==-1) {
-					res.sendStatus(401);
+					res.sendStatus(403);
 					return;
 				}
 				switch(req.body.action) {
@@ -416,9 +413,6 @@ module.exports = (bot, db, auth, config, winston) => {
 										db.users.findOrCreate({_id: galleryDocument.owner_id}, (err, ownerUserDocument) => {
 											if(!err && ownerUserDocument) {
 												ownerUserDocument.points += vote * 10;
-												if(ownerUserDocument.points<0) {
-													ownerUserDocument.points = 0;
-												}
 												ownerUserDocument.save(err => {});
 											}
 											res.sendStatus(200);
@@ -455,12 +449,12 @@ module.exports = (bot, db, auth, config, winston) => {
 							db.users.findOrCreate({_id: galleryDocument.owner_id}, (err, ownerUserDocument) => {
 								if(!err && ownerUserDocument) {
 									ownerUserDocument.points -= galleryDocument.points * 10;
-									if(ownerUserDocument.points<0) {
-										ownerUserDocument.points = 0;
-									}
 									ownerUserDocument.save(err => {});
 								}
 								db.gallery.findByIdAndRemove(galleryDocument._id, err => {
+									try {
+										fs.unlinkSync(__dirname + "/../Extensions/gallery-" + galleryDocument._id + ".abext");
+									} catch(err) {}
 									res.sendStatus(err ? 500 : 200);
 								});
 							});
@@ -497,7 +491,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				res.sendStatus(400);
 			}
 		} else {
-			res.sendStatus(401);
+			res.sendStatus(403);
 		}
 	});
 	app.get("/extension.abext", (req, res) => {
@@ -517,6 +511,13 @@ module.exports = (bot, db, auth, config, winston) => {
 	});
 	app.get("/extensions/(|gallery|queue)", (req, res) => {
 		if(req.isAuthenticated()) {
+			if(!req.query.count) {
+				req.query.count = 18;
+			}
+			if(!req.query.page) {
+				req.query.page = 1;
+			}
+
 			var serverData = [];
 			var usr = bot.users.get(req.user.id);
 			function addServerData(i, callback) {
@@ -560,64 +561,76 @@ module.exports = (bot, db, auth, config, winston) => {
 		}
 		function renderPage(upvoted_gallery_extensions, serverData) {
 			var extensionState = req.path.substring(req.path.lastIndexOf("/")+1);
-			db.gallery.find({state: extensionState}, (err, galleryDocuments) => {
+			db.gallery.find({
+				state: extensionState
+			}, (err, galleryDocuments) => {
+				var pageTitle = extensionState.charAt(0).toUpperCase() + extensionState.slice(1) + " - AwesomeBot Extensions";
 				if(req.query.q) {
+					pageTitle = "Search for \"" + req.query.q + "\" in " + extensionState.charAt(0).toUpperCase() + extensionState.slice(1) + " - AwesomeBot Extensions";
 					var query = req.query.q.toLowerCase();
 					galleryDocuments = galleryDocuments.filter(galleryDocument => {
 						return galleryDocument._id==query || galleryDocument.name.toLowerCase().indexOf(query)>-1 || galleryDocument.description.toLowerCase().indexOf(query)>-1 || galleryDocument.owner_id==query;
 					});
 				}
+				var extensionData = galleryDocuments.sort((a, b) => {
+					if(a.featured && !b.featured) {
+						return -1;
+					} else if(!a.featured && b.featured) {
+						return 1;
+					} else if(a.points!=b.points) {
+						return b.points - a.points;
+					} else {
+						return new Date(b.last_updated) - new Date(a.last_updated);
+					}
+				}).map(galleryDocument => {
+					var owner = bot.users.get(galleryDocument.owner_id) || {};
+					switch(galleryDocument.type) {
+						case "command":
+							var typeIcon = "magic";
+							var typeDescription = galleryDocument.key;
+							break;
+						case "keyword":
+							var typeIcon = "key";
+							var typeDescription = galleryDocument.keywords.join(", ");
+							break;
+						case "timer":
+							var typeIcon = "clock-o";
+							var typeDescription = "Runs every " + secondsToString(galleryDocument.interval/1000).slice(0, -1);
+							break;
+					}
+					return {
+						_id: galleryDocument._id,
+						name: galleryDocument.name,
+						type: galleryDocument.type,
+						typeIcon: typeIcon,
+						typeDescription: typeDescription,
+						description: md.makeHtml(galleryDocument.description),
+						featured: galleryDocument.featured,
+						owner: {
+							name: owner.username || "invalid-user",
+							id: owner.id || "invalid-user",
+							discriminator: owner.discriminator || "0000",
+							avatar: owner.avatarURL || "/img/discord-icon.png"
+						},
+						points: galleryDocument.points,
+						relativeLastUpdated: Math.floor((new Date() - new Date(galleryDocument.last_updated))/86400000),
+						rawLastUpdated: prettyDate(new Date(galleryDocument.last_updated))
+					};
+				});
+
+				var startItem = parseInt(req.query.count) * (parseInt(req.query.page) - 1);
 				res.render("pages/extensions.ejs", {
 					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 					isMaintainer: req.isAuthenticated() ? config.maintainers.indexOf(req.user.id)>-1 : false,
+					pageTitle: pageTitle,
 					serverData: serverData,
 					activeSearchQuery: req.query.q,
 					mode: extensionState,
-					extensions: galleryDocuments.sort((a, b) => {
-						if(a.featured && !b.featured) {
-							return -1;
-						} else if(!a.featured && b.featured) {
-							return 1;
-						} else if(a.points!=b.points) {
-							return b.points - a.points;
-						} else {
-							return new Date(b.last_updated) - new Date(a.last_updated);
-						}
-					}).map(galleryDocument => {
-						var owner = bot.users.get(galleryDocument.owner_id) || {};
-						switch(galleryDocument.type) {
-							case "command":
-								var typeIcon = "magic";
-								var typeDescription = galleryDocument.key;
-								break;
-							case "keyword":
-								var typeIcon = "key";
-								var typeDescription = galleryDocument.keywords.join(", ");
-								break;
-							case "timer":
-								var typeIcon = "clock-o";
-								var typeDescription = "Runs every " + secondsToString(Math.floor(galleryDocument.interval/1000)).slice(-1);
-								break;
-						}
-						return {
-							_id: galleryDocument._id,
-							name: galleryDocument.name,
-							type: galleryDocument.type,
-							typeIcon: typeIcon,
-							typeDescription: typeDescription,
-							description: md.makeHtml(galleryDocument.description),
-							featured: galleryDocument.featured,
-							owner: {
-								name: owner.username || "invalid-user",
-								id: owner.id || "invalid-user",
-								discriminator: owner.discriminator,
-								avatar: owner.avatarURL || "/img/discord-icon.png"
-							},
-							points: galleryDocument.points,
-							relativeLastUpdated: Math.floor((new Date() - new Date(galleryDocument.last_updated))/86400000),
-							rawLastUpdated: prettyDate(new Date(galleryDocument.last_updated))
-						};
-					}),
+					rawCount: extensionData.length,
+					itemsPerPage: req.query.count,
+					currentPage: parseInt(req.query.page),
+					numPages: Math.ceil(extensionData.length/((req.query.count=="0" ? extensionData.length : parseInt(req.query.count)))),
+					extensions: extensionData.slice(startItem, startItem + (req.query.count=="0" ? extensionData.length : parseInt(req.query.count))),
 					upvotedData: upvoted_gallery_extensions
 				});
 			});
@@ -627,15 +640,19 @@ module.exports = (bot, db, auth, config, winston) => {
 	// My extensions
 	app.get("/extensions/my", (req, res) => {
 		if(req.isAuthenticated()) {
-			db.gallery.find({}, (err, galleryDocuments) => {
+			db.gallery.find({
+				owner_id: req.user.id
+			}, (err, galleryDocuments) => {
 				res.render("pages/extensions.ejs", {
 					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 					currentPage: req.path,
+					pageTitle: "My AwesomeBot Extensions",
 					serverData: {
 						id: req.user.id
 					},
 					activeSearchQuery: req.query.q,
 					mode: "my",
+					rawCount: (galleryDocuments || []).length,
 					extensions: galleryDocuments || []
 				});
 			});
@@ -648,13 +665,15 @@ module.exports = (bot, db, auth, config, winston) => {
 	});
 	app.post("/extensions/my", (req, res) => {
 		if(req.isAuthenticated()) {
-			db.gallery.find({}, (err, galleryDocuments) => {
+			db.gallery.find({
+				owner_id: req.user.id
+			}, (err, galleryDocuments) => {
 				if(!err && galleryDocuments) {
 					for(var i=0; i<galleryDocuments.length; i++) {
 						if(req.body["extension-" + i + "-removed"]!=null) {
 							db.gallery.findByIdAndRemove(galleryDocuments[i]._id).exec();
 							try {
-								fs.unlink(__dirname + "/../Extensions/gallery-" + galleryDocuments[i]._id + ".abext");
+								fs.unlinkSync(__dirname + "/../Extensions/gallery-" + galleryDocuments[i]._id + ".abext");
 							} catch(err) {}
 							break;
 						}
@@ -674,7 +693,10 @@ module.exports = (bot, db, auth, config, winston) => {
 	app.get("/extensions/builder", (req, res) => {
 		if(req.isAuthenticated()) {
 			if(req.query.extid) {
-				db.gallery.findOne({_id: req.query.extid}, (err, galleryDocument) => {
+				db.gallery.findOne({
+					_id: req.query.extid,
+					owner_id: req.user.id
+				}, (err, galleryDocument) => {
 					if(!err && galleryDocument) {
 						try {
 							galleryDocument.code = fs.readFileSync(__dirname + "/../Extensions/gallery-" + galleryDocument._id + ".abext");
@@ -693,6 +715,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				res.render("pages/extensions.ejs", {
 					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 					currentPage: req.path,
+					pageTitle: "AwesomeBot Extension Builder",
 					serverData: {
 						id: req.user.id
 					},
@@ -712,7 +735,10 @@ module.exports = (bot, db, auth, config, winston) => {
 		if(req.isAuthenticated()) {
 			if(validateExtensionData(req.body)) {
 				if(req.query.extid) {
-					db.gallery.findOne({_id: req.query.extid}, (err, galleryDocument) => {
+					db.gallery.findOne({
+						_id: req.query.extid,
+						owner_id: req.user.id
+					}, (err, galleryDocument) => {
 						if(!err && galleryDocument) {
 							saveExtensionData(galleryDocument, true);
 						} else {
@@ -724,12 +750,13 @@ module.exports = (bot, db, auth, config, winston) => {
 				}
 				function saveExtensionData(galleryDocument, isUpdate) {
 					galleryDocument.level = "gallery";
+					galleryDocument.state = "queue";
 					galleryDocument.description = req.body.description;
 					writeExtensionData(galleryDocument, req.body);
 
 					if(!isUpdate) {
 						galleryDocument.owner_id = req.user.id;
-						galleryDocument.state = "queue";
+						io.of("/extensions/my").emit("update", req.user.id);
 					}
 					galleryDocument.save(err => {
 						if(!err && !req.query.extid) {
@@ -750,7 +777,11 @@ module.exports = (bot, db, auth, config, winston) => {
 				}
 				function sendResponse() {
 					io.of(req.path).emit("update", req.user.id);
-					res.redirect(req.originalUrl);
+					if(req.query.external=="true") {
+						res.sendStatus(200);
+					} else {
+						res.redirect(req.originalUrl);
+					}
 				}
 			} else {
 				res.redirect("/error");
@@ -2482,6 +2513,37 @@ module.exports = (bot, db, auth, config, winston) => {
 	io.of("/dashboard/management/ongoing-activities").on("connection", socket => {
 		socket.on('disconnect', () => {});
 	});
+	app.post("/dashboard/other/ongoing-activities", (req, res) => {
+		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			if(req.body["end-type"] && req.body["end-id"]) {
+				var ch = svr.channels.get(req.body["end-id"]);
+				if(ch) {
+					var channelDocument = serverDocument.channels.id(ch.id);
+					if(!channelDocument) {
+						serverDocument.channels.push({_id: ch.id});
+						channelDocument = serverDocument.channels.id(ch.id);
+					}
+
+					switch(req.body["end-type"]) {
+						case "trivia":
+							// TODO: end trivia session
+							break;
+						case "poll":
+							// TODO: end poll
+							break;
+						case "giveaway":
+							// TODO: end giveaway
+							break;
+						case "lottery":
+							// TODO: end lottery
+							break;
+					}
+				}
+			}
+
+			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
+		});
+	});
 
 	// Admin console public data
 	app.get("/dashboard/other/public-data", (req, res) => {
@@ -2577,18 +2639,31 @@ module.exports = (bot, db, auth, config, winston) => {
 					state: state
 				}, (err, galleryDocument) => {
 					if(!err && galleryDocument) {
-						var extensionDocument = galleryDocument;
+						var extensionDocument;
+						var isUpdate = false;
+						for(var i=0; i<serverDocument.extensions.length; i++) {
+							if(serverDocument.extensions[i]._id.toString()==galleryDocument._id.toString()) {
+								extensionDocument = serverDocument.extensions[i];
+								isUpdate = true;
+								break;
+							}
+						}
+
+						extensionDocument = galleryDocument;
 						extensionDocument.level = "third";
-						extensionDocument.enabled_channel_ids = [svr.defaultChannel.id];
 						extensionDocument.description = undefined;
 						extensionDocument.points = undefined;
 						extensionDocument.owner_id = undefined;
 						extensionDocument.featured = undefined;
 						extensionDocument.state = undefined;
-						extensionDocument.store = {};
 
-						serverDocument.extensions.push(extensionDocument);
-						extensionDocument._id = serverDocument.extensions[serverDocument.extensions.length-1]._id;
+						if(isUpdate) {
+							io.of("/dashboard/other/extension-builder").emit("update", svr.id);
+						} else {
+							extensionDocument.enabled_channel_ids = [svr.defaultChannel.id];
+							extensionDocument.store = {};
+							serverDocument.extensions.push(extensionDocument);
+						}
 
 						try {
 							writeFile(__dirname + "/../Extensions/" + svr.id + "-" + extensionDocument._id + ".abext", fs.readFileSync(__dirname + "/../Extensions/gallery-" + req.body[Object.keys(req.body)[0]] + ".abext"), err => {
@@ -2605,7 +2680,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				for(var i=0; i<serverDocument.extensions.length; i++) {
 					if(req.body["extension-" + i + "-removed"]!=null) {
 						try {
-							fs.unlink(__dirname + "/../Extensions/" + svr.id + "-" + serverDocument.extensions[i]._id + ".abext");
+							fs.unlinkSync(__dirname + "/../Extensions/" + svr.id + "-" + serverDocument.extensions[i]._id + ".abext");
 						} catch(err) {}
 						serverDocument.extensions[i] = null;
 						break;
@@ -2684,6 +2759,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					if(!req.query.extid) {
 						req.originalUrl += "&extid=" + extensionDocument._id;
 					}
+					io.of("/dashboard/other/extensions").emit("update", svr.id);
 				}
 
 				writeFile(__dirname + "/../Extensions/" + svr.id + "-" + extensionDocument._id + ".abext", req.body.code, err => {
@@ -2702,6 +2778,7 @@ module.exports = (bot, db, auth, config, winston) => {
 		extensionDocument.type = data.type;
 		extensionDocument.key = data.type=="command" ? data.key : null;
 		extensionDocument.keywords = data.type=="keyword" ? data.keywords.split(",") : null;
+		extensionDocument.case_sensitive = data.type=="keyword" ? data.case_sensitive=="on" : null;
 		extensionDocument.interval = data.type=="timer" ? data.interval : null;
 		extensionDocument.usage_help = data.type=="command" ? data.usage_help : null;
 		extensionDocument.extended_help = data.type=="command" ? data.extended_help : null;
@@ -2746,7 +2823,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					serverCount: bot.guilds.size,
 					userCount: bot.users.size,
 					totalMessageCount: messageCount,
-					roundedUptime: Math.floor(process.uptime()/3600000),
+					roundedUptime: Math.floor(process.uptime()/3600),
 					shardCount: bot.shards.size,
 					version: config.version
 				});

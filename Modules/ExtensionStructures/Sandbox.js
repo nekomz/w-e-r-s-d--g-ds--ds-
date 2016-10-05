@@ -76,7 +76,7 @@ module.exports = (bot, db, winston, extensionDocument, svr, serverDocument, ch, 
                 level = "info";
             }
             if(["info", "warn", "error"].indexOf(level.toLowerCase())>-1) {
-                winston.log(level.toLowerCase(), "Extension '" + extensionDocument._id + "' log on server '" + svr.name + "' in channel '" + ch.name + "': " + message, {svrid: svr.id, chid: ch.id, extid: extensionDocument._id});
+                winston.log(level.toLowerCase(), "Extension '" + extensionDocument._id + "' log on server '" + svr.name + "' in channel '" + ch.name + "': " + message, {svrid: svr.id, chid: ch.id, extid: extensionDocument._id.toString()});
             }
         }
 	};

@@ -17,10 +17,11 @@ module.exports = (bot, db, config, winston, userDocument, msg, suffix) => {
             msg.channel.createMessage("Sorry, invalid server. :slight_frown: Try again?");
         // Check if sender is an admin of the specified server
         } else {
+            var member = svr.members.get(msg.author.id);
         	// Get server data
 			db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
-				if(!err && serverDocument && serverDocument.config.blocked.indexOf(msg.author.id)==-1) {
-					if(bot.getUserBotAdmin(svr, serverDocument, svr.member(msg.author))==3) {
+				if(!err && member && serverDocument && serverDocument.config.blocked.indexOf(msg.author.id)==-1) {
+					if(bot.getUserBotAdmin(svr, serverDocument, member)==3) {
 						msg.channel.createMessage(":globe_with_meridians: " + config.hosting_url + "dashboard/overview?svrid=" + svr.id);
 					} else {
 						msg.channel.createMessage("You are not an admin for that server.");

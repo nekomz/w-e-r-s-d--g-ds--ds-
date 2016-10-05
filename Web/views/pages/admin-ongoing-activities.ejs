@@ -5,12 +5,13 @@
 	<% include ../partials/head %>
 
 	<script>
-	function endSession(name) {
+	function endSession(id, type) {
 		$.ajax({
 			type: "POST",
-			url: "/uc-submit?svrid=<%= serverData.id %>&path=<%= currentPage %>",
+			url: "<%= currentPage %>?svrid=<%= serverData.id %>",
 			data: {
-				"end": name
+				"end-type": type,
+				"end-id": id
 			},
 			success: function() {
 				window.location.reload();
@@ -80,7 +81,7 @@
 											</div>
 										</div>
 										<footer class="card-footer">
-											<a onclick="endSession('<%= trivia[i].channel.id %>-trivia');" class="card-footer-item">
+											<a onclick="endSession('<%= trivia[i].channel.id %>', 'trivia');" class="card-footer-item">
 												End Game
 											</a>
 										</footer>
@@ -141,7 +142,7 @@
 											</div>
 										</div>
 										<footer class="card-footer">
-											<a onclick="endSession('<%= polls[i].channel.id %>-poll');" class="card-footer-item">
+											<a onclick="endSession('<%= polls[i].channel.id %>', 'poll');" class="card-footer-item">
 												End Poll
 											</a>
 										</footer>
@@ -202,7 +203,7 @@
 											</div>
 										</div>
 										<footer class="card-footer">
-											<a onclick="endSession('<%= giveaways[i].channel.id %>-giveaway');" class="card-footer-item" title="Secret will still be given away">
+											<a onclick="endSession('<%= giveaways[i].channel.id %>', 'giveaway');" class="card-footer-item" title="Secret will still be given away">
 												End Giveaway
 											</a>
 										</footer>
@@ -250,7 +251,7 @@
 											</h4>
 										</div>
 										<footer class="card-footer">
-											<a onclick="endSession('<%= lotteries[i].channel.id %>-lottery');" class="card-footer-item" title="AwesomePoints will still be given away">
+											<a onclick="endSession('<%= lotteries[i].channel.id %>', 'lottery');" class="card-footer-item" title="AwesomePoints will still be given away">
 												End Lottery
 											</a>
 										</footer>

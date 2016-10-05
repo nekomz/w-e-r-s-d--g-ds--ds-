@@ -350,7 +350,7 @@ module.exports = (bot, db, config, winston) => {
 			for(var i=0; i<extensionDocument.enabled_channel_ids.length; i++) {
 				var ch = svr.channels.get(extensionDocument.enabled_channel_ids[i]);
 				if(ch) {
-					runExtension(bot, db, winston, svr, ch, extensionDocument);
+					runExtension(bot, db, winston, svr, serverDocument, ch, extensionDocument);
 				}
 			}
 			setTimeout(() => {

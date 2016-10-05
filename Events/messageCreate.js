@@ -406,7 +406,7 @@ module.exports = (bot, db, config, winston, msg) => {
 									for(var i=0; i<serverDocument.extensions.length; i++) {
 										if((!serverDocument.extensions[i].isAdminOnly || memberBotAdmin>0) && serverDocument.extensions[i].enabled_channel_ids.indexOf(msg.channel.id)>-1) {
 											// Command extensions
-											if(serverDocument.extensions[i].type=="command" && command.command==serverDocument.extensions[i].key) {
+											if(serverDocument.extensions[i].type=="command" && command && command.command==serverDocument.extensions[i].key) {
 												winston.info("Treating '" + msg.cleanContent + "' as a trigger for command extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 												extensionApplied = true;
 
@@ -415,13 +415,13 @@ module.exports = (bot, db, config, winston, msg) => {
 			    								deleteCommandMessage(serverDocument, channelDocument, msg);
 												setCooldown(serverDocument, channelDocument);
 												
-												runExtension(bot, db, winston, msg.channel.guild, msg.channel, serverDocument.extensions[i], msg, command.suffix, null);
+												runExtension(bot, db, winston, msg.channel.guild, serverDocument, msg.channel, serverDocument.extensions[i], msg, command.suffix, null);
 											// Keyword extensions
 											} else if(serverDocument.extensions[i].type=="keyword") {
-												var keywordMatch = msg.content.containsArray(serverDocument.extensions[i].keywords);
+												var keywordMatch = msg.content.containsArray(serverDocument.extensions[i].keywords, serverDocument.extensions[i].case_sensitive);
 												if(((serverDocument.extensions[i].keywords.length>1 || serverDocument.extensions[i].keywords[0]!="*") && keywordMatch.selectedKeyword>-1) || (serverDocument.extensions[i].keywords.length==1 && serverDocument.extensions[i].keywords[0]=="*")) {
 													winston.info("Treating '" + msg.cleanContent + "' as a trigger for keyword extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-													runExtension(bot, db, winston, msg.channel.guild, msg.channel, serverDocument.extensions[i], msg, null, keywordMatch);
+													runExtension(bot, db, winston, msg.channel.guild, serverDocument, msg.channel, serverDocument.extensions[i], msg, null, keywordMatch);
 												}
 											}
 										}
@@ -449,7 +449,7 @@ module.exports = (bot, db, config, winston, msg) => {
 									} else if(msg.mentions.find(usr => {
 										return usr.id==bot.user.id;
 									}) && serverDocument.config.tag_reaction.isEnabled) {
-										msg.channel.createMessage(serverDocument.config.tag_reaction.messages[getRandomInt(0, serverDocument.config.tag_reaction.messages.length-1)].replaceAll("@user", "**@" + bot.getName(svr, serverDocument, msg.author) + "**").replaceAll("@mention", msg.author.mention));
+										msg.channel.createMessage(serverDocument.config.tag_reaction.messages[getRandomInt(0, serverDocument.config.tag_reaction.messages.length-1)].replaceAll("@user", "**@" + bot.getName(msg.channel.guild, serverDocument, msg.member) + "**").replaceAll("@mention", msg.author.mention));
 									}
 								}
 							}

@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 module.exports = new mongoose.Schema({
     _id: String,
     past_names: [String],
-    points: {type: Number, default: 0, min: 0},
+    points: {type: Number, default: 1},
     afk_message: String,
     server_nicks: [new mongoose.Schema({
         _id: String,

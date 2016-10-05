@@ -60,7 +60,7 @@ function doAction(extid, action) {
 						<i class="fa fa-<%= extensions[i].typeIcon %>"></i>
 					</span>
 				</header>
-				<div class="card-content" style="max-height: 300px;overflow-y: scroll;">
+				<div class="card-content" style="max-height: 150px;overflow-y: scroll;">
 					<div class="content">
 						<%- extensions[i].description %>
 					</div>
@@ -72,7 +72,7 @@ function doAction(extid, action) {
 						</div>
 						<div class="media-content">
 							<p class="title is-5"><%= extensions[i].owner.name + "#" + extensions[i].owner.discriminator %></p>
-							<p class="subtitle is-6">Last updated <strong><%= extensions[i].relativeLastUpdated==0 ? "today" : (extensions[i].relativeLastUpdated + " day" + (extensions[i].relativeLastUpdated==1 ? "" : "s") + " ago") %></strong></p>
+							<p class="subtitle is-6" title="<%= extensions[i].rawLastUpdated %>">Last updated <strong><%= extensions[i].relativeLastUpdated==0 ? "today" : (extensions[i].relativeLastUpdated + " day" + (extensions[i].relativeLastUpdated==1 ? "" : "s") + " ago") %></strong></p>
 						</div>
 					</div>
 				</div>
@@ -106,11 +106,10 @@ function doAction(extid, action) {
 							</div>
 							<button class="modal-close"></button>
 						</div>
-					<% } else { %>
+					<% } %>
 						<a class="card-footer-item" href="/extension.abext?extid=<%= extensions[i]._id %>">
 							Download
 						</a>
-					<% } %>
 					<% if(authUser) { %>
 						<a class="card-footer-item" onclick="doAction('<%= extensions[i]._id %>', 'upvote');">
 							<%= upvotedData.indexOf(extensions[i]._id)==-1 ? "+1" : "-1" %>
@@ -137,37 +136,63 @@ function doAction(extid, action) {
 			</div>
 		</div>
 
-		<% if(i % 3==1 && i!=extensions.length-1 && i!=0) { %>
+		<% if(i % 3==2 && i!=extensions.length-1 && i!=0) { %>
 			</div>
 			<div class="columns">
 		<% } %>
 	<% } %>
 	</div>
 <% } else { %>
-	<div class="box hero is-small is-light">
-		<div class="hero-body">
-			<div class="container has-text-centered">
-				<h2 class="subtitle">
-					<span>Wow, this place is empty</span>
-					<span class="icon">
-						<i class="fa fa-meh-o"></i>
-					</span>
-				</h2>
-				<% if(activeSearchQuery) { %>
-					<p class="hero-buttons">
-						<a class="button is-medium" href="/extensions/<%= mode %>">
-							<span class="icon">
-								<i class="fa fa-chevron-left"></i>
-							</span>
-							<span>Reset search</span>
-						</a>
-					</p>
-				<% } else { %>
-					<h1 class="title">
-						Nothing in <strong><%= mode %></strong>
-					</h1>
-				<% } %>
-			</div>
-		</div>
-	</div>
+	<% var resetUrl = "/extensions/" + mode; %>
+	<% include ../partials/no-results %>
+<% } %>
+<% if(numPages>1) { %>
+	<br>
+	<nav class="pagination">
+		<ul>
+			<% if(currentPage>2) { %>
+				<li>
+					<a class="button" href="/extensions/<%= mode %>?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=1">
+						1
+					</a>
+				</li>
+			<% } %>
+			<% if(currentPage>3) { %>
+				<li>
+					<span>...</span>
+				</li>
+			<% } %>
+			<% if(currentPage>1) { %>
+				<li>
+					<a class="button" href="/extensions/<%= mode %>?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage-1 %>">
+						<%= currentPage-1 %>
+					</a>
+				</li>
+			<% } %>
+			<li>
+				<a class="button is-primary" href="/extensions/<%= mode %>?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage %>">
+					<%= currentPage %>
+				</a>
+			</li>
+			<% if(currentPage<numPages) { %>
+				<li>
+					<a class="button" href="/extensions/<%= mode %>?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= currentPage+1 %>">
+						<%= currentPage+1 %>
+					</a>
+				</li>
+			<% } %>
+			<% if(currentPage<numPages-2) { %>
+				<li>
+					<span>...</span>
+				</li>
+			<% } %>
+			<% if(currentPage<numPages-1) { %>
+				<li>
+					<a class="button" href="/extensions/<%= mode %>?q=<%= activeSearchQuery %>&count=<%= itemsPerPage %>&page=<%= numPages %>">
+						<%= numPages %>
+					</a>
+				</li>
+			<% } %>
+		</ul>
+	</nav>
 <% } %>

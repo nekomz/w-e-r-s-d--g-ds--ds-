@@ -27,7 +27,7 @@
 	</script>
 </head>
 <body onload="mediaStyle();">
-	<section id="header" class="hero is-primary is-fullheight is-bold" style="background: url('/header-image');background-size: cover;" ondblclick="">
+	<section id="header" class="hero is-primary is-fullheight is-bold" style="background: url('/header-image');background-size: cover;">
 		<div class="hero-head">
 			<% include ../partials/header %>
 		</div>
@@ -38,7 +38,14 @@
 						Welcome, <strong><%= authUser.username %></strong>!
 					</h1>
 					<h3 class="subtitle is-3">
-						Select a server to configure.
+						<% if(serverData.length>0) { %>
+							Select a server to configure.
+						<% } else { %>
+							<span>You don't have any servers</span>
+							<span class="icon is-medium">
+								<i class="fa fa-meh-o"></i>
+							</span>
+						<% } %>
 					</h3>
 				</div>
 				<br><br><br>

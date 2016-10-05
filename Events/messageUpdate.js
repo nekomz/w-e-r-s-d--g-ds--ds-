@@ -49,11 +49,11 @@ module.exports = (bot, db, config, winston, msg, oldmsgdata) => {
 	                // Apply keyword extensions again
 	                for(var i=0; i<serverDocument.extensions.length; i++) {
 						if(serverDocument.extensions[i].type=="keyword" && (!serverDocument.extensions[i].isAdminOnly || memberBotAdmin>0) && serverDocument.extensions[i].enabled_channel_ids.indexOf(msg.channel.id)>-1) {
-							var keywordMatch = msg.content.containsArray(serverDocument.extensions[i].keywords);
+							var keywordMatch = msg.content.containsArray(serverDocument.extensions[i].keywords, serverDocument.extensions[i].case_sensitive);
 							if(((serverDocument.extensions[i].keywords.length>1 || serverDocument.extensions[i].keywords[0]!="*") && keywordMatch.selectedKeyword>-1) || (serverDocument.extensions[i].keywords.length==1 && serverDocument.extensions[i].keywords[0]=="*")) {
 								winston.info("Treating '" + msg.cleanContent + "' as a trigger for keyword extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 								extensionApplied = true;
-								runExtension(bot, db, winston, msg.channel.guild, msg.channel, serverDocument.extensions[i], msg, null, keywordMatch);
+								runExtension(bot, db, winston, msg.channel.guild, serverDocument, msg.channel, serverDocument.extensions[i], msg, null, keywordMatch);
 							}
 						}
 					}

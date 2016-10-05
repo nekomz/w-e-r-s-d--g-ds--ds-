@@ -7,6 +7,7 @@ module.exports = new mongoose.Schema({
 	type: {type: String, enum: ["command", "keyword", "timer"], required: true},
 	key: {type: String, minlength: 3, maxlength: 25},
 	keywords: [String],
+	case_sensitive: Boolean,
 	isAdminOnly: {type: Boolean, default: false},
 	interval: {type: Number, min: 300000, max: 86400000},
 	enabled_channel_ids: [String],
