@@ -15,7 +15,7 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
             bot.sendArray(msg.channel, JSON.parse(res.body).facts);
         } else {
             winston.error("Failed to fetch cat fact(s)", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-            msg.channel.createMessage("Cats exist and are cute af. :cat:");
+            msg.channel.createMessage("Cats exist and are cute af. 😻");
         }
     });
 }

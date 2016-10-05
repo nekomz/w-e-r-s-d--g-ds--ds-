@@ -8,7 +8,7 @@ const mongooseSessionStore = require("connect-mongo")(session);
 const passport = require("passport");
 const passportSocketIo = require("passport.socketio");
 const discordStrategy = require("passport-discord").Strategy;
-const discordOAuthScopes = ["identify", "guilds"];
+const discordOAuthScopes = ["identify", "email", "guilds"];
 const path = require("path");
 const fs = require("fs");
 const writeFile = require("write-file-atomic");
@@ -19,6 +19,7 @@ const removeMd = require("remove-markdown");
 const base64 = require("node-base64-image");
 const sizeof = require("object-sizeof");
 
+const commands = require("./../Configuration/commands.json");
 const database = require("./../Database/Driver.js");
 const prettyDate = require("./../Modules/PrettyDate.js");
 const secondsToString = require("./../Modules/PrettySeconds.js");
@@ -50,8 +51,8 @@ module.exports = (bot, db, auth, config, winston) => {
 	passport.serializeUser((user, done) => {
 		done(null, user);
 	});
-	passport.deserializeUser((user, done) => {
-		done(null, user);
+	passport.deserializeUser((id, done) => {
+		done(null, id);
 	});
 	const sessionStore = new mongooseSessionStore({
 		mongooseConnection: database.getConnection()
@@ -73,7 +74,7 @@ module.exports = (bot, db, auth, config, winston) => {
 	});
 
 	// Handle errors (redirect to error page)
-	app.use(function(error, req, res, next) {
+	app.use((error, req, res, next) => {
 		winston.error(error);
 	    res.sendStatus(500);
 	    res.render("pages/error.ejs", {error: error});
@@ -104,6 +105,79 @@ module.exports = (bot, db, auth, config, winston) => {
 			rawUserCount: bot.users.size,
 			rawUptime: secondsToString(process.uptime()).slice(0, -1),
 			roundedUptime: Math.floor(process.uptime()/3600)
+		});
+	});
+
+	// AwesomeBot data API
+	app.get("/api/servers", (req, res) => {
+		var params = {
+			"config.public_data.isShown": true
+		};
+		if(req.query.id) {
+			params["_id"] = req.query.id;
+		}
+		db.servers.find(params, (err, serverDocuments) => {
+			if(!err && serverDocuments) {
+				var data = [];
+				var startIndex = req.query.start ? parseInt(req.query.start) : 0;
+				var endIndex = req.query.count ? (startIndex + parseInt(req.query.count)) : serverDocuments.length;
+				for(var i=startIndex; i<serverDocuments.length; i++) {
+					data.push(getServerData(serverDocuments[i]) || serverDocuments[i]._id);
+					if(i==endIndex-1) {
+						break;
+					}
+				}
+				res.json(data);
+			} else {
+				res.sendStatus(400);
+			}
+		})
+	});
+	app.get("/api/users", (req, res) => {
+		var usr = bot.users.get(req.query.id);
+		if(usr) {
+			db.users.findOrCreate({_id: usr.id}, (err, userDocument) => {
+				if(err || !userDocument) {
+					userDocument = {};
+				}
+				res.json(getUserData(usr, userDocument));
+			});
+		} else {
+			res.sendStatus(400);
+		}
+	});
+	app.get("/api/extensions", (req, res) => {
+		var params = {};
+		if(req.query.id) {
+			params["_id"] = req.query.id;
+		}
+		if(req.query.name) {
+			params["name"] = req.query.name;
+		}
+		if(req.query.type) {
+			params["type"] = req.query.type;
+		}
+		if(req.query.status) {
+			params["state"] = req.query.status;
+		}
+		if(req.query.owner) {
+			params["owner_id"] = req.query.owner;
+		}
+		db.gallery.find(params, (err, galleryDocuments) => {
+			if(!err && galleryDocuments) {
+				var data = [];
+				var startIndex = req.query.start ? parseInt(req.query.start) : 0;
+				var endIndex = req.query.count ? (startIndex + parseInt(req.query.count)) : galleryDocuments.length;
+				for(var i=startIndex; i<galleryDocuments.length; i++) {
+					data.push(getExtensionData(galleryDocuments[i]));
+					if(i==endIndex-1) {
+						break;
+					}
+				}
+				res.json(data);
+			} else {
+				res.sendStatus(400);
+			}
 		});
 	});
 
@@ -167,26 +241,8 @@ module.exports = (bot, db, auth, config, winston) => {
 						var serverData = [];
 						var query = req.query.q.toLowerCase();
 						for(var i=0; i<serverDocuments.length; i++) {
-							var svr = bot.guilds.get(serverDocuments[i]._id);
-							if(svr) {
-								var data = {
-									name: svr.name,
-									id: svr.id,
-									icon: svr.iconURL || "/img/discord-icon.png",
-									owner: {
-										username: svr.members.get(svr.ownerID).user.username,
-										id: svr.members.get(svr.ownerID).id,
-										avatar: svr.members.get(svr.ownerID).user.avatarURL || "/img/discord-icon.png",
-										name: svr.members.get(svr.ownerID).nick || svr.members.get(svr.ownerID).user.username
-									},
-									members: svr.members.size,
-									messages: serverDocuments[i].messages_today,
-									created: Math.ceil((Date.now() - svr.createdAt)/86400000),
-									command_prefix: bot.getCommandPrefix(svr, serverDocuments[i]),
-									category: serverDocuments[i].config.public_data.server_listing.category,
-									description: serverDocuments[i].config.public_data.server_listing.isEnabled ? (md.makeHtml(serverDocuments[i].config.public_data.server_listing.description || "No description provided.")) : null,
-									invite_link: serverDocuments[i].config.public_data.server_listing.isEnabled ? (serverDocuments[i].config.public_data.server_listing.invite_link || "javascript:alert('Invite link not available');") : null
-								};
+							var data = getServerData(serverDocuments[i]);
+							if(data) {
 								if(query && data.name.toLowerCase().indexOf(query)==-1 && data.id!=query && data.owner.username.toLowerCase().indexOf(query)==-1 && (!data.description || data.description.toLowerCase().indexOf(query)==-1)) {
 									continue;
 								} else {
@@ -244,103 +300,51 @@ module.exports = (bot, db, auth, config, winston) => {
 					if(req.query.q) {
 						var usr = findQueryUser(req.query.q, bot.users);
 						if(usr) {
-							var sampleMember = bot.getFirstMember(usr);
-							var mutualServers = bot.guilds.filter(svr => {
-								return svr.members.has(usr.id);
+							db.users.findOrCreate({_id: usr.id}, (err, userDocument) => {
+								if(err || !userDocument) {
+									userDocument = {};
+								}
+								var userProfile = getUserData(usr, userDocument);
+								renderPage({
+									pageTitle: userProfile.username + "'s Profile",
+									userProfile: userProfile
+								});
 							});
-							userProfile = {
-								username: usr.username,
-								discriminator: usr.discriminator,
-								avatar: usr.avatarURL || "/img/discord-icon.png",
-								id: usr.id,
-								status: sampleMember.status,
-								game: bot.getGame(sampleMember),
-								created: prettyDate(new Date(usr.createdAt)),
-								roundedAccountAge: Math.ceil((Date.now() - usr.createdAt)/86400000),
-								rawAccountAge: secondsToString((Date.now() - usr.createdAt)/1000),
-								backgroundImage: "http://i.imgur.com/8UIlbtg.jpg",
-								mutualServerCount: mutualServers.length,
-								pastNameCount: 0,
-								mutualServers: []
-							};
-							switch(userProfile.status) {
-								case "online":
-									userProfile.statusColor = "is-success";
-									break;
-								case "idle":
-								case "away":
-									userProfile.statusColor = "is-warning";
-									break;
-								case "offline":
-								default:
-									userProfile.statusColor = "is-dark";
-									break;
-							}
+						} else {
+							renderPage({pageTitle: "Search for user \"" + req.query.q + "\""});
 						}
-					}
-					db.users.find({}, (err, userDocuments) => {
-						var totalPoints = 0;
-						var publicProfilesCount = 0;
-						var reminderCount = 0;
-						var profileFieldCount = 0;
-						var afkUserCount = 0;
-						if(!err && userDocuments) {
-							for(var i=0; i<userDocuments.length; i++) {
-								totalPoints += userDocuments[i].points;
-								if(userDocuments[i].isProfilePublic) {
-									publicProfilesCount++;
-								}
-								reminderCount += userDocuments[i].reminders.length;
-								if(userDocuments[i].profile_fields) {
-									profileFieldCount += Object.keys(userDocuments[i].profile_fields).length;
-								}
-								if(userDocuments[i].afk_message) {
-									afkUserCount++;
-								}
-								if(userProfile && userDocuments[i]._id==userProfile.id) {
-									userProfile.backgroundImage = userDocuments[i].profile_background_image;
-									userProfile.points = userDocuments[i].points;
-									userProfile.rawLastSeen = secondsToString(Math.floor(((Date.now() - userDocuments[i].last_seen)/1000)/60)*60);
-									userProfile.lastSeen = prettyDate(new Date(userDocuments[i].last_seen));
-									userProfile.mutualServerCount = mutualServers.length;
-									userProfile.pastNameCount = userDocuments[i].past_names.length;
-									userProfile.isAfk = userDocuments[i].afk_message!=null && userDocuments[i].afk_message!="";
+					} else {
+						db.users.find({}, (err, userDocuments) => {
+							var totalPoints = 0;
+							var publicProfilesCount = 0;
+							var reminderCount = 0;
+							var profileFieldCount = 0;
+							var afkUserCount = 0;
+							if(!err && userDocuments) {
+								for(var i=0; i<userDocuments.length; i++) {
+									totalPoints += userDocuments[i].points;
 									if(userDocuments[i].isProfilePublic) {
-										userProfile.profileFields = userDocuments[i].profile_fields;
-										userProfile.pastNames = userDocuments[i].past_names;
-										userProfile.afkMessage = userDocuments[i].afk_message;
-										mutualServers.forEach(svr => {
-											userProfile.mutualServers.push({
-												name: svr.name,
-												id: svr.id,
-												icon: svr.iconURL || "/img/discord-icon.png",
-												owner: svr.members.get(svr.ownerID).user.username
-											});
-										});
+										publicProfilesCount++;
+									}
+									reminderCount += userDocuments[i].reminders.length;
+									if(userDocuments[i].profile_fields) {
+										profileFieldCount += Object.keys(userDocuments[i].profile_fields).length;
+									}
+									if(userDocuments[i].afk_message) {
+										afkUserCount++;
 									}
 								}
 							}
-						}
-						if(userProfile && userProfile.points==null) {
-							userProfile.points = 0;
-						}
-
-						var pageTitle = "Users";
-						if(userProfile) {
-							pageTitle = userProfile.username + " Profile";
-						} else if(req.query.q) {
-							pageTitle = "Search for user \"" + req.query.q + "\"";
-						}
-						renderPage({
-							pageTitle: pageTitle,
-							userProfile: userProfile,
-							totalPoints: totalPoints,
-							publicProfilesCount: publicProfilesCount,
-							reminderCount: reminderCount,
-							profileFieldCount: profileFieldCount,
-							afkUserCount: afkUserCount,
+							renderPage({
+								pageTitle: "Users",
+								totalPoints: totalPoints,
+								publicProfilesCount: publicProfilesCount,
+								reminderCount: reminderCount,
+								profileFieldCount: profileFieldCount,
+								afkUserCount: afkUserCount,
+							});
 						});
-					});
+					}
 				}
 
 				function renderPage(data) {
@@ -358,6 +362,83 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		});
 	});
+	function getServerData(serverDocument) {
+		var data;
+		var svr = bot.guilds.get(serverDocument._id);
+		if(svr) {
+			data = {
+				name: svr.name,
+				id: svr.id,
+				icon: svr.iconURL || "/img/discord-icon.png",
+				owner: {
+					username: svr.members.get(svr.ownerID).user.username,
+					id: svr.members.get(svr.ownerID).id,
+					avatar: svr.members.get(svr.ownerID).user.avatarURL || "/img/discord-icon.png",
+					name: svr.members.get(svr.ownerID).nick || svr.members.get(svr.ownerID).user.username
+				},
+				members: svr.members.size,
+				messages: serverDocument.messages_today,
+				created: Math.ceil((Date.now() - svr.createdAt)/86400000),
+				command_prefix: bot.getCommandPrefix(svr, serverDocument),
+				category: serverDocument.config.public_data.server_listing.category,
+				description: serverDocument.config.public_data.server_listing.isEnabled ? (md.makeHtml(serverDocument.config.public_data.server_listing.description || "No description provided.")) : null,
+				invite_link: serverDocument.config.public_data.server_listing.isEnabled ? (serverDocument.config.public_data.server_listing.invite_link || "javascript:alert('Invite link not available');") : null
+			};
+		}
+		return data;
+	}
+	function getUserData(usr, userDocument) {
+		var sampleMember = bot.getFirstMember(usr);
+		var mutualServers = bot.guilds.filter(svr => {
+			return svr.members.has(usr.id);
+		});
+		var userProfile = {
+			username: usr.username,
+			discriminator: usr.discriminator,
+			avatar: usr.avatarURL || "/img/discord-icon.png",
+			id: usr.id,
+			status: sampleMember.status,
+			game: bot.getGame(sampleMember),
+			created: prettyDate(new Date(usr.createdAt)),
+			roundedAccountAge: Math.ceil((Date.now() - usr.createdAt)/86400000),
+			rawAccountAge: secondsToString((Date.now() - usr.createdAt)/1000),
+			backgroundImage: userDocument.profile_background_image || "http://i.imgur.com/8UIlbtg.jpg",
+			points: userDocument.points || 1,
+			rawLastSeen: secondsToString(userDocument.last_seen ? (Math.floor(((Date.now() - userDocument.last_seen)/1000)/60)*60) : 0),
+			lastSeen: prettyDate(userDocument.last_seen ? new Date(userDocument.last_seen) : new Date()),
+			mutualServerCount: mutualServers.length,
+			pastNameCount: (userDocument.past_names || {}).length || 0,
+			isAfk: userDocument.afk_message!=null && userDocument.afk_message!="",
+			mutualServers: []
+		};
+		switch(userProfile.status) {
+			case "online":
+				userProfile.statusColor = "is-success";
+				break;
+			case "idle":
+			case "away":
+				userProfile.statusColor = "is-warning";
+				break;
+			case "offline":
+			default:
+				userProfile.statusColor = "is-dark";
+				break;
+		}
+		if(userDocument.isProfilePublic) {
+			userProfile.profileFields = userDocument.profile_fields;
+			userProfile.pastNames = userDocument.past_names;
+			userProfile.afkMessage = userDocument.afk_message;
+			mutualServers.forEach(svr => {
+				userProfile.mutualServers.push({
+					name: svr.name,
+					id: svr.id,
+					icon: svr.iconURL || "/img/discord-icon.png",
+					owner: svr.members.get(svr.ownerID).user.username
+				});
+			});
+		}
+		return userProfile;
+	}
 
 	// Header image provider
 	app.get("/header-image", (req, res) => {
@@ -424,7 +505,7 @@ module.exports = (bot, db, auth, config, winston) => {
 						break;
 					case "accept":
 						getGalleryDocument(galleryDocument => {
-							messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been accepted to the AwesomeBot extension gallery! :tada: " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
+							messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been accepted to the AwesomeBot extension gallery! 🎉 " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
 							galleryDocument.state = "gallery";
 							galleryDocument.save(err => {
 								res.sendStatus(err ? 500 : 200);
@@ -434,7 +515,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					case "feature":
 						getGalleryDocument(galleryDocument => {
 							if(!galleryDocument.featured) {
-								messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been featured on the AwesomeBot extension gallery! :star: " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
+								messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been featured on the AwesomeBot extension gallery! 🌟 " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
 							}
 							galleryDocument.featured = galleryDocument.featured!=true;
 							galleryDocument.save(err => {
@@ -582,41 +663,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					} else {
 						return new Date(b.last_updated) - new Date(a.last_updated);
 					}
-				}).map(galleryDocument => {
-					var owner = bot.users.get(galleryDocument.owner_id) || {};
-					switch(galleryDocument.type) {
-						case "command":
-							var typeIcon = "magic";
-							var typeDescription = galleryDocument.key;
-							break;
-						case "keyword":
-							var typeIcon = "key";
-							var typeDescription = galleryDocument.keywords.join(", ");
-							break;
-						case "timer":
-							var typeIcon = "clock-o";
-							var typeDescription = "Runs every " + secondsToString(galleryDocument.interval/1000).slice(0, -1);
-							break;
-					}
-					return {
-						_id: galleryDocument._id,
-						name: galleryDocument.name,
-						type: galleryDocument.type,
-						typeIcon: typeIcon,
-						typeDescription: typeDescription,
-						description: md.makeHtml(galleryDocument.description),
-						featured: galleryDocument.featured,
-						owner: {
-							name: owner.username || "invalid-user",
-							id: owner.id || "invalid-user",
-							discriminator: owner.discriminator || "0000",
-							avatar: owner.avatarURL || "/img/discord-icon.png"
-						},
-						points: galleryDocument.points,
-						relativeLastUpdated: Math.floor((new Date() - new Date(galleryDocument.last_updated))/86400000),
-						rawLastUpdated: prettyDate(new Date(galleryDocument.last_updated))
-					};
-				});
+				}).map(getExtensionData);
 
 				var startItem = parseInt(req.query.count) * (parseInt(req.query.page) - 1);
 				res.render("pages/extensions.ejs", {
@@ -636,6 +683,42 @@ module.exports = (bot, db, auth, config, winston) => {
 			});
 		}
 	});
+	function getExtensionData(galleryDocument) {
+		var owner = bot.users.get(galleryDocument.owner_id) || {};
+		switch(galleryDocument.type) {
+			case "command":
+				var typeIcon = "magic";
+				var typeDescription = galleryDocument.key;
+				break;
+			case "keyword":
+				var typeIcon = "key";
+				var typeDescription = galleryDocument.keywords.join(", ");
+				break;
+			case "timer":
+				var typeIcon = "clock-o";
+				var typeDescription = "Runs every " + secondsToString(galleryDocument.interval/1000).slice(0, -1);
+				break;
+		}
+		return {
+			_id: galleryDocument._id,
+			name: galleryDocument.name,
+			type: galleryDocument.type,
+			typeIcon: typeIcon,
+			typeDescription: typeDescription,
+			description: md.makeHtml(galleryDocument.description),
+			featured: galleryDocument.featured,
+			owner: {
+				name: owner.username || "invalid-user",
+				id: owner.id || "invalid-user",
+				discriminator: owner.discriminator || "0000",
+				avatar: owner.avatarURL || "/img/discord-icon.png"
+			},
+			status: galleryDocument.state,
+			points: galleryDocument.points,
+			relativeLastUpdated: Math.floor((new Date() - new Date(galleryDocument.last_updated))/86400000),
+			rawLastUpdated: prettyDate(new Date(galleryDocument.last_updated))
+		};
+	}
 
 	// My extensions
 	app.get("/extensions/my", (req, res) => {
@@ -715,7 +798,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				res.render("pages/extensions.ejs", {
 					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 					currentPage: req.path,
-					pageTitle: "AwesomeBot Extension Builder",
+					pageTitle: (extensionData.name ? (extensionData.name + " - ") : "") + "AwesomeBot Extension Builder",
 					serverData: {
 						id: req.user.id
 					},
@@ -803,20 +886,22 @@ module.exports = (bot, db, auth, config, winston) => {
 				searchQuery = req.query.q;
 				searchResults = [];
 				for(var i=0; i<items.length; i++) {
-					try {
-						var content = removeMd(fs.readFileSync(__dirname + "/../Wiki/" + items[i], "utf8"));
-					} catch(err) {
-						continue;
-					}
-					var title = items[i].substring(0, items[i].indexOf("."));
-					var contentMatch = content.toLowerCase().indexOf(req.query.q);
-					if(title.toLowerCase().indexOf(req.query.q)>-1 || contentMatch>-1) {
-						var startIndex = contentMatch<300 ? 0 : (contentMatch - 300);
-						var endIndex = contentMatch>content.length-300 ? content.length : (contentMatch + 300);
-						searchResults.push({
-							title: title,
-							matchText: (startIndex>0 ? "..." : "") + content.substring(startIndex, contentMatch) + "<strong>" + req.query.q + "</strong>" + content.substring(contentMatch + req.query.q.length, endIndex) + (endIndex<content.length ? "..." : "")
-						});
+					if(items[0].indexOf(".")!=0 && items[0].endsWith(".md")) {
+						try {
+							var content = removeMd(fs.readFileSync(__dirname + "/../Wiki/" + items[i], "utf8"));
+						} catch(err) {
+							continue;
+						}
+						var title = items[i].substring(0, items[i].indexOf("."));
+						var contentMatch = content.toLowerCase().indexOf(req.query.q);
+						if(title.toLowerCase().indexOf(req.query.q)>-1 || contentMatch>-1) {
+							var startIndex = contentMatch<300 ? 0 : (contentMatch - 300);
+							var endIndex = contentMatch>content.length-300 ? content.length : (contentMatch + 300);
+							searchResults.push({
+								title: title,
+								matchText: (startIndex>0 ? "..." : "") + content.substring(startIndex, contentMatch) + "<strong>" + req.query.q + "</strong>" + content.substring(contentMatch + req.query.q.length, endIndex) + (endIndex<content.length ? "..." : "")
+							});
+						}
 					}
 				}
 				pageTitle = "Search for \"" + req.query.q + "\" - AwesomeBot Wiki";
@@ -833,7 +918,9 @@ module.exports = (bot, db, auth, config, winston) => {
 			}
 			res.render("pages/wiki.ejs", {
 				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
-				pageList: items,
+				pageList: items.filter(a => {
+					return a.indexOf(".")!=0 && a.endsWith(".md");
+				}),
 				pageTitle: pageTitle,
 				searchQuery: searchQuery,
 				searchResults: searchResults,
@@ -916,7 +1003,7 @@ module.exports = (bot, db, auth, config, winston) => {
 	app.get("/login/callback", passport.authenticate("discord", {
 		failureRedirect: "/error"
 	}), (req, res) => {
-		if(config.global_blocklist.indexOf(req.user.id)>-1) {
+		if(config.global_blocklist.indexOf(req.user.id)>-1 || !req.user.verified) {
 			req.logout();
 		} else {
 			res.redirect("/dashboard");
@@ -1013,7 +1100,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					points: -1
 				}).limit(1).exec((err, userDocuments) => {
 					var richestMember;
-					if(!err && userDocuments) {
+					if(!err && userDocuments && userDocuments.length>0) {
 						richestMember = svr.members.get(userDocuments[0]._id);
 					}
 					var topGame = serverDocument.games.sort((a, b) => {
@@ -1100,6 +1187,10 @@ module.exports = (bot, db, auth, config, winston) => {
 	// Admin console command list
 	app.get("/dashboard/commands/command-list", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			var commandDescriptions = {};
+			for(var command in commands.public) {
+				commandDescriptions[command] = commands.public[command].description;
+			}
 			res.render("pages/admin-command-list.ejs", {
 				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 				serverData: {
@@ -1112,9 +1203,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				configData: {
 					commands: serverDocument.toObject().config.commands
 				},
-				commandDescriptions: config.command_descriptions,
-				pmCommandUsages: config.pm_command_usages,
-				commandUsages: config.command_usages
+				commandDescriptions: commandDescriptions
 			});
 		});
 	});
@@ -1157,7 +1246,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					max_voice_channels: config.max_voice_channels
 				},
 				commandDescriptions: {
-					music: config.command_descriptions.music
+					music: commands.public.music.description
 				}
 			});
 		});
@@ -1223,7 +1312,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				},
 				commandDescriptions: {
-					rss: config.command_descriptions.rss
+					rss: commands.public.rss.description
 				}
 			});
 		});
@@ -1284,7 +1373,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				},
 				commandDescriptions: {
-					streamers: config.command_descriptions.streamers
+					streamers: commands.public.streamers.description
 				}
 			});
 		});
@@ -1337,7 +1426,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				},
 				commandDescriptions: {
-					tag: config.command_descriptions.tag
+					tag: commands.public.tag.description
 				}
 			};
 			function cleanTag(content) {
@@ -1628,9 +1717,9 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				},
 				commandDescriptions: {
-					games: config.command_descriptions.games,
-					messages: config.command_descriptions.messages,
-					stats: config.command_descriptions.stats
+					games: commands.public.games.description,
+					messages: commands.public.messages.description,
+					stats: commands.public.stats.description
 				}
 			});
 		});
@@ -1673,7 +1762,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					})
 				},
 				commandDescriptions: {
-					ranks: config.command_descriptions.ranks
+					ranks: commands.public.ranks.description
 				}
 			});
 		});
@@ -1736,7 +1825,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					points_lottery: serverDocument.config.points_lottery
 				},
 				commandDescriptions: {
-					points: config.command_descriptions.points
+					points: commands.public.points.description
 				}
 			});
 		});
@@ -2021,7 +2110,7 @@ module.exports = (bot, db, auth, config, winston) => {
 								},
 								reason: md.makeHtml(strikeDocument.reason),
 								rawDate: prettyDate(new Date(strikeDocument.timestamp)),
-								relativeDate: Math.floor((new Date() - new Date(strikeDocument.timestamp))/86400000)
+								relativeDate: Math.floor((Date.now() - strikeDocument.timestamp)/86400000)
 							};
 						})
 					};
@@ -2312,9 +2401,9 @@ module.exports = (bot, db, auth, config, winston) => {
 					custom_roles: serverDocument.toObject().config.custom_roles
 				},
 				commandDescriptions: {
-					perms: config.command_descriptions.perms,
-					role: config.command_descriptions.role,
-					roleinfo: config.command_descriptions.roleinfo
+					perms: commands.public.perms.description,
+					role: commands.public.role.description,
+					roleinfo: commands.public.roleinfo.description
 				}
 			});
 		});
@@ -2750,7 +2839,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				});
 				extensionDocument.level = "third";
 				extensionDocument.enabled_channel_ids = enabled_channel_ids;
-				extensionDocument.isAdminOnly = ["command", "keyword"].indexOf(req.body.type)>-1 ? req.body.isAdminOnly=="on" : null;
+				extensionDocument.admin_level = ["command", "keyword"].indexOf(req.body.type)>-1 ? (req.body.admin_level || 0) : null;
 				extensionDocument = writeExtensionData(extensionDocument, req.body);
 
 				if(!isUpdate) {
@@ -3029,48 +3118,6 @@ module.exports = (bot, db, auth, config, winston) => {
 		});
 	});
 
-	// Maintainer console commands
-	app.get("/dashboard/global-options/commands", (req, res) => {
-		checkAuth(req, res, consolemember => {
-			res.render("pages/maintainer-commands.ejs", {
-				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
-				serverData: {
-					name: bot.user.username,
-					id: bot.user.id,
-					icon: bot.user.avatarURL || "/img/discord-icon.png",
-					isMaintainer: true
-				},
-				currentPage: req.path,
-				config: {
-					pm_commands: config.pm_commands,
-					commands: config.commands,
-					pm_command_usages: config.pm_command_usages,
-					command_descriptions: config.command_descriptions,
-					disabled_commands: config.disabled_commands,
-					command_usages: config.command_usages,
-					admin_commands: config.admin_commands,
-					filtered_commands: config.filtered_commands
-				}
-			});
-		});
-	});
-	io.of("/dashboard/global-options/commands").on("connection", socket => {
-		socket.on('disconnect', () => {});
-	});
-	app.post("/dashboard/global-options/commands", (req, res) => {
-		checkAuth(req, res, consolemember => {
-			for(var key in req.body) {
-				if(config[key]) {
-					try {
-						config[key] = JSON.parse(req.body[key]);
-					} catch(err) {}
-				}
-			}
-
-			saveMaintainerConsoleOptions(consolemember, req, res);
-		});
-	});
-
 	// Maintainer console homepage options
 	app.get("/dashboard/global-options/homepage", (req, res) => {
 		checkAuth(req, res, consolemember => {
@@ -3193,7 +3240,7 @@ function findQueryUser(query, list) {
 
 function parseCommandOptions(svr, serverDocument, command, data) {
 	serverDocument.config.commands[command].isEnabled = data[command + "-isEnabled"]=="on";
-	serverDocument.config.commands[command].isAdminOnly = data[command + "-isAdminOnly"]=="true";
+	serverDocument.config.commands[command].admin_level = data[command + "-admin_level"] || 0;
 	serverDocument.config.commands[command].disabled_channel_ids = [];
 	svr.channels.forEach(ch => {
 		if(ch.type==0) {

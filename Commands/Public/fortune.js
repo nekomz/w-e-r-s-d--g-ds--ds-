@@ -21,7 +21,7 @@ module.exports = function fortune(bot, db, config, winston, userDocument, server
                 msg.channel.createMessage(res.body.fortune);
             } else {
                 winston.warn("Failed to fetch fortune", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-                msg.channel.createMessage("I honestly don't know :neutral_face:");
+                msg.channel.createMessage("I honestly don't know 😐");
             }
         });
     }

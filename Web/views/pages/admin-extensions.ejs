@@ -60,13 +60,12 @@
 														<%= configData.extensions[i].store %> KB
 													</td>
 													<td>
-														<a class="button is-small" href="/dashboard/other/extension-builder?svrid=<%= serverData.id %>&extid=<%= configData.extensions[i]._id %>">
+														<a class="button is-small is-primary" href="/dashboard/other/extension-builder?svrid=<%= serverData.id %>&extid=<%= configData.extensions[i]._id %>">
 															<span class="icon is-small">
 																<i class="fa fa-pencil"></i>
 															</span>
 															<span>Edit</span>
 														</a>
-														&nbsp;
 														<button class="button is-small is-danger" name="extension-<%= i %>-removed">
 															<span>Remove</span>
 															<span class="icon is-small">

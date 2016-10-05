@@ -1,0 +1,753 @@
+{
+    "pm": {
+        "afk": {
+            "usage": ""
+        },
+        "config": {
+            "usage": ""
+        },
+        "giveaway": {
+            "usage": ""
+        },
+        "help": {
+            "usage": ""
+        },
+        "join": {
+            "usage": ""
+        },
+        "poll": {
+            "usage": ""
+        },
+        "profile": {
+            "usage": ""
+        },
+        "reminders": {
+            "usage": ""
+        },
+        "remindme": {
+            "usage": ""
+        },
+        "say": {
+            "usage": ""
+        },
+        "servernick": {
+            "usage": ""
+        },
+        "vote": {
+            "usage": ""
+        }
+    },
+    "public": {
+        "8ball": {
+            "usage": "",
+            "description": "Predicts the answer to a question",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "about": {
+            "usage": "",
+            "description": "Information about AwesomeBot",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "afk": {
+            "usage": "",
+            "description": "Display AFK message for users when tagged",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "alert": {
+            "usage": "",
+            "description": "Allows members to message the admins",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "anime": {
+            "usage": "",
+            "description": "Searches anime shows using Hummingbird",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "appstore": {
+            "usage": "",
+            "description": "Searches the Apple App Store for one or more apps",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "archive": {
+            "usage": "",
+            "description": "Provides a JSON file with the last <i>n</i> messages in chat",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "avatar": {
+            "usage": "",
+            "description": "Posts a user's profile picture",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "ban": {
+            "usage": "",
+            "description": "Removes a member from the server and prevents them from coming back",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 3
+            }
+        },
+        "calc": {
+            "usage": "",
+            "description": "Quickly evaluate a mathematical expression",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "cat": {
+            "usage": "",
+            "description": "Random picture of a cat!",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "catfact": {
+            "usage": "",
+            "description": "Random fact about cats",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "choose": {
+            "usage": "",
+            "description": "Randomly chooses from a set of options",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "convert": {
+            "usage": "",
+            "description": "Converts between units of measurement and currencies",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "cool": {
+            "usage": "",
+            "description": "Sets a command cooldown for the channel",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 1
+            }
+        },
+        "count": {
+            "usage": "",
+            "description": "Keeps tallies of various things",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "countdown": {
+            "usage": "",
+            "description": "Set a timer for an event",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "ddg": {
+            "usage": "",
+            "description": "DuckDuckGo Instant Answers",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "debug": {
+            "usage": "",
+            "description": "",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "e621": {
+            "usage": "",
+            "description": "Searches by tag on e621.net",
+            "defaults": {
+                "is_enabled": false,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "emoji": {
+            "usage": "",
+            "description": "Fetches the large version of an emoji",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "eval": {
+            "usage": "",
+            "description": "",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "fortune": {
+            "usage": "",
+            "description": "Tells your fortune (not really)",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "games": {
+            "usage": "",
+            "description": "Command that shows the most-played games by members on the server",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "gif": {
+            "usage": "",
+            "description": "Gets a GIF from Giphy with the given tags",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": true,
+                "admin_level": 0
+            }
+        },
+        "giveaway": {
+            "usage": "",
+            "description": "Easy way to randomly give away a secret of some sort",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "google": {
+            "usage": "",
+            "description": "Displays Google search and Knowledge Graph results",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": true,
+                "admin_level": 0
+            }
+        },
+        "help": {
+            "usage": "",
+            "description": "",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "image": {
+            "usage": "",
+            "description": "Searches Google Images with the given query and returns the first or a random result",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": true,
+                "admin_level": 0
+            }
+        },
+        "imdb": {
+            "usage": "",
+            "description": "Provides movie and TV show data",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "imgur": {
+            "usage": "",
+            "description": "Uploads an image to Imgur",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "info": {
+            "usage": "",
+            "description": "Lists basic stats about this server",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "join": {
+            "usage": "",
+            "description": "Provdes the OAuth link to add the bot to another server",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "joke": {
+            "usage": "",
+            "description": "Tells a random joke!",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "kick": {
+            "usage": "",
+            "description": "Removes a member from the server",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 3
+            }
+        },
+        "linkme": {
+            "usage": "",
+            "description": "Searches the Google Play Store for one or more apps",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "list": {
+            "usage": "",
+            "description": "In-chat to-do list",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 1
+            }
+        },
+        "manga": {
+            "usage": "",
+            "description": "Searches manga data",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "meme": {
+            "usage": "",
+            "description": "Generates a dank new meme",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "messages": {
+            "usage": "",
+            "description": "Command that shows the top members on the server by activity",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "music": {
+            "usage": "",
+            "description": "Plays audio from YouTube in a voice channel",
+            "defaults": {
+                "is_enabled": false,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "mute": {
+            "usage": "",
+            "description": "Prevents users from sending messages in a channel",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 3
+            }
+        },
+        "nuke": {
+            "usage": "",
+            "description": "Deletes messages in a channel, all or from a user",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 1
+            }
+        },
+        "numfact": {
+            "usage": "",
+            "description": "Random fact about a number",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "perms": {
+            "usage": "",
+            "description": "Modifies permissions for a role or user in a channel",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 1
+            }
+        },
+        "ping": {
+            "usage": "",
+            "description": "",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "points": {
+            "usage": "",
+            "description": "Records user points and displays them for individual members",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "pokedex": {
+            "usage": "",
+            "description": "Searches Pokemon database by Pokedex number",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "poll": {
+            "usage": "",
+            "description": "Allows users to create live, in-chat polls",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "profile": {
+            "usage": "",
+            "description": "An all-in-one command to view information about users",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "quiet": {
+            "usage": "",
+            "description": "Turns off the bot in one or all channels",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 1
+            }
+        },
+        "ranks": {
+            "usage": "",
+            "description": "Lists the ranks of all members of the server",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "reddit": {
+            "usage": "",
+            "description": "Gets the top HOT posts from a given sub on Reddit",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "remindme": {
+            "usage": "",
+            "description": "",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "role": {
+            "usage": "",
+            "description": "Adds members to roles, modifies roles, and sets member colors",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "roleinfo": {
+            "usage": "",
+            "description": "Gets information about roles",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "roll": {
+            "usage": "",
+            "description": "Generates a random number or rolls a die",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "room": {
+            "usage": "",
+            "description": "Allows anyone to create a temporary channel with a few other members",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "rss": {
+            "usage": "",
+            "description": "Fetches entries from an RSS feed, listed below",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "rule34": {
+            "usage": "",
+            "description": "Searches by tag on rule34.xxx",
+            "defaults": {
+                "is_enabled": false,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "safebooru": {
+            "usage": "",
+            "description": "Searches by tag on safebooru.org",
+            "defaults": {
+                "is_enabled": false,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "say": {
+            "usage": "",
+            "description": "Says something in the chat",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "shorten": {
+            "usage": "",
+            "description": "Uses goo.gl to shorten or decode a URL",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "stats": {
+            "usage": "",
+            "description": "Collect data about the most active members and most popular games and commands on the server for each week",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "stock": {
+            "usage": "",
+            "description": "Fetches basic information about a stock symbol from Yahoo! Finance",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "streamers": {
+            "usage": "",
+            "description": "Checks whether Twitch and YouTube Gaming streams are online",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "strikes": {
+            "usage": "",
+            "description": "Shows strikes for a user",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 3
+            }
+        },
+        "tag": {
+            "usage": "",
+            "description": "Quick snippet response system",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "time": {
+            "usage": "",
+            "description": "Gets the time in a city or country",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "translate": {
+            "usage": "",
+            "description": "Uses Microsoft Translate to translate a word/phrase into another language",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "trivia": {
+            "usage": "",
+            "description": "A fun question-and-answer group quiz game",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "twitter": {
+            "usage": "",
+            "description": "Fetches the Twitter timeline for a given user",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "urban": {
+            "usage": "",
+            "description": "Defines the given word from Urban Dictionary",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "weather": {
+            "usage": "",
+            "description": "Gets th current weather and forecast for the given location from MSN Weather",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "wiki": {
+            "usage": "",
+            "description": "Shows the first three paragraphs of the Wikipedia article matching the given search query",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "wolfram": {
+            "usage": "",
+            "description": "Displays an entire Wolfram|Alpha knowledge page about a given topic or person",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "xkcd": {
+            "usage": "",
+            "description": "Fetches today's XKCD comic or by ID",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "year": {
+            "usage": "",
+            "description": "",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": false,
+                "admin_level": 0
+            }
+        },
+        "youtube": {
+            "usage": "",
+            "description": "Gets a YouTube link with the given query, including channels, videos, and playlists",
+            "defaults": {
+                "is_enabled": true,
+                "is_nsfw_filtered": true,
+                "admin_level": 0
+            }
+        }
+    }
+}

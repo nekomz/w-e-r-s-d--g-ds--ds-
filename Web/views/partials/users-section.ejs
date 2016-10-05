@@ -81,30 +81,6 @@ $.getJSON("/userlist", function(data) {
 										<i class="fa fa-list-ul"></i>
 									</span>
 									<span><strong><%= data.userProfile.mutualServerCount %></strong> server<%= data.userProfile.mutualServerCount==1 ? "" : "s" %> with AwesomeBot</span>
-									<% if(data.userProfile.mutualServers) { %>
-										</span>
-										<div id="mutual-servers-modal" class="modal">
-											<div class="modal-background"></div>
-											<div class="modal-container">
-												<div class="modal-content">
-													<div class="box">
-														<% for(var i=0; i<data.userProfile.mutualServers.length; i++) { %>
-															<article class="media">
-																<div class="media-left">
-																	<img class="image is-64x64" src="<%= data.userProfile.mutualServers[i].icon %>" alt="<%= data.userProfile.mutualServers[i].id %>">
-																</div>
-																<div class="media-content">
-																	<p class="title is-3"><%= data.userProfile.mutualServers[i].name %></p>
-																	<p class="subtitle is-5">Owned by @<%= data.userProfile.mutualServers[i].owner %></p>
-																</div>
-															</article>
-														<% } %>
-													</div>
-												</div>
-											</div>
-											<button class="modal-close"></button>
-										</div>
-									<% } %>
 								</h4>
 
 								<h4 class="title is-3">
@@ -175,6 +151,34 @@ $.getJSON("/userlist", function(data) {
 				<script>
 				document.getElementById("frame").style.backgroundImage = "url('<%= data.userProfile.backgroundImage %>')";document.getElementById("frame").style.paddingBottom = "200px"
 				</script>
+				<% if(data.userProfile.mutualServers) { %>
+					<div id="mutual-servers-modal" class="modal">
+						<div class="modal-background"></div>
+						<div class="modal-container">
+							<div class="modal-content">
+								<div class="box">
+									<% for(var i=0; i<data.userProfile.mutualServers.length; i++) { %>
+										<article class="media">
+											<div class="media-left">
+												<img class="image is-64x64" src="<%= data.userProfile.mutualServers[i].icon %>" alt="<%= data.userProfile.mutualServers[i].id %>">
+											</div>
+											<div class="media-content">
+												<p class="title is-3"><%= data.userProfile.mutualServers[i].name %></p>
+												<p class="subtitle is-5">Owned by @<%= data.userProfile.mutualServers[i].owner %></p>
+											</div>
+											<a class="media-right" href="/activity/servers?q=<%= data.userProfile.mutualServers[i].name %>">
+												<span class="icon is-medium">
+													<i class="fa fa-info"></i>
+												</span>
+											</a>
+										</article>
+									<% } %>
+								</div>
+							</div>
+						</div>
+						<button class="modal-close"></button>
+					</div>
+				<% } %>
 			<% } else { %>
 				<script>
 				document.getElementById("frame").style.backgroundImage = "";document.getElementById("frame").style.paddingBottom = "";
@@ -225,6 +229,6 @@ $.getJSON("/userlist", function(data) {
 	<script>
 	document.getElementById("frame").style.backgroundImage = "";document.getElementById("frame").style.paddingBottom = "";
 	</script>
-	<% var resetUrl = "/activity/q="; %>
+	<% var resetUrl = "/activity/users?q="; %>
 	<% include ../partials/no-results %>
 <% } %>

@@ -1,4 +1,4 @@
-const secondsToString = require("./../Modules/PrettySeconds.js");
+const secondsToString = require("./../../Modules/PrettySeconds.js");
 const util = require("util");
 
 // Run eval on maintainer message

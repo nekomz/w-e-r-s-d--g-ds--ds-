@@ -89,11 +89,15 @@ function publishExtension() {
 		<% if(extensionBuilderPublishUrl) { %>
 			<label class="label">Permissions</label>
 			<p class="control">
-				<label class="checkbox">
-				<input name="isAdminOnly" type="checkbox" <%= extensionData.isAdminOnly ? "checked" : "" %>>
-					Only admins can use this command
-				</label>
-				<span class="help">The command will only respond to members that have bot admin level of at least 1.</span>
+				<span class="select">
+					<select name="admin_level">
+						<option value="0" <%= extensionData.admin_level==0 ? "" : "selected" %>>@everyone</option>
+						<option value="1" <%= extensionData.admin_level==1 ? "selected" : "" %>>Admin level &ge;1</option>
+						<option value="2" <%= extensionData.admin_level==2 ? "selected" : "" %>>Admin level &ge;2</option>
+						<option value="3" <%= extensionData.admin_level==3 ? "selected" : "" %>>Admin level 3</option>
+					</select>
+				</span>
+				<span class="help">The command will only respond to members that have the selected bot admin level (or higher).</span>
 			</p>
 		<% } %>
 		<label class="label">Usage</label>
@@ -123,11 +127,15 @@ function publishExtension() {
 		<% if(extensionBuilderPublishUrl) { %>
 			<label class="label">Permissions</label>
 			<p class="control">
-				<label class="checkbox">
-				<input name="isAdminOnly" type="checkbox" <%= extensionData.isAdminOnly ? "checked" : "" %>>
-					Extension only responds to admins
-				</label>
-				<span class="help">The extension will only run when the message author has a bot admin level of at least 1.</span>
+				<span class="select">
+					<select name="admin_level">
+						<option value="0" <%= extensionData.admin_level==0 ? "" : "selected" %>>@everyone</option>
+						<option value="1" <%= extensionData.admin_level==1 ? "selected" : "" %>>Admin level &ge;1</option>
+						<option value="2" <%= extensionData.admin_level==2 ? "selected" : "" %>>Admin level &ge;2</option>
+						<option value="3" <%= extensionData.admin_level==3 ? "selected" : "" %>>Admin level 3</option>
+					</select>
+				</span>
+				<span class="help">The extension will only run if the message author has the selected bot admin level (or higher).</span>
 			</p>
 		<% } %>
 	</span>

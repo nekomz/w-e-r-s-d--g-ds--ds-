@@ -9,6 +9,6 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
         msg.channel.createMessage(member.user.avatarURL || member.user.defaultAvatarURL);
     } else {
         winston.warn("Requested member does not exist so avatar cannot be shown", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-        msg.channel.createMessage("I don't know who that is, so you can look at my beautiful face instead :heartbeat:\n" + (bot.user.avatarURL || bot.user.defaultAvatarURL));
+        msg.channel.createMessage("I don't know who that is, so you can look at my beautiful face instead 💖\n" + (bot.user.avatarURL || bot.user.defaultAvatarURL));
     }
 }

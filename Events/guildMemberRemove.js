@@ -11,12 +11,9 @@ module.exports = (bot, db, config, winston, svr, member) => {
 
 			// Remove member data in channels (input and filters)
 			for(var i=0; i<serverDocument.channels.length; i++) {
-				const channelFields = ["input_data", "spam_filter_data", "nsfw_filter_data", "custom_filter_data"];
-				for(var j=0; j<channelFields.length; j++) {
-					var dataToRemove = serverDocument.channels[i][channelFields[j]].id(member.id);
-					if(dataToRemove) {
-						dataToRemove.remove();
-					}
+				var dataToRemove = serverDocument.channels[i].spam_filter_data.id(member.id);
+				if(dataToRemove) {
+					dataToRemove.remove();
 				}
 			}
 

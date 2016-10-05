@@ -16,13 +16,13 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
     var member = bot.memberSearch(query, msg.channel.guild);
     if(!query || !member || [msg.author.id, bot.user.id].indexOf(member.id)>-1) {
         winston.warn("Invalid member provided for ban command", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-        msg.channel.createMessage(msg.author.mention + " Do you want me to ban you? :open_mouth:");
+        msg.channel.createMessage(msg.author.mention + " Do you want me to ban you? 😮");
     } else {
         member.ban(deleteMessageDays).then(() => {
             msg.channel.createMessage("Ok, user banned :wave:" + (deleteMessageDays ? ("\nI also deleted their messages from the last " + deleteMessageDays + " days") : ""));
         }).catch(err => {
             winston.error("Failed to ban user '" + member.user.username + "' from server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
-            msg.channel.createMessage("I don't have permission to ban on this server :sob:");
+            msg.channel.createMessage("I don't have permission to ban on this server 😭");
         });
     }
 }

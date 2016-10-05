@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title><%= serverData.name %> Extension Builder - AwesomeBot Admin Console</title>
+	<title><%= extensionData.name ? (extensionData.name + " - ") : "" %><%= serverData.name %> Extension Builder - AwesomeBot Admin Console</title>
 	<% include ../partials/head %>
 
 	<script src="/js/form-change-listener.js"></script>

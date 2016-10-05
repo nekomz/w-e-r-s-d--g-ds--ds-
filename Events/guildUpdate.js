@@ -5,29 +5,29 @@ module.exports = (bot, db, config, winston, svr, oldsvrdata) => {
 		if(!err && serverDocument) {
 			if(serverDocument.config.moderation.isEnabled) {
 				// Send server_name_updated_message if necessary
-				if(oldsvr.name!=svr.name && serverDocument.config.moderation.status_messages.server_name_updated.isEnabled) {
-					winston.info("Name of server '" + oldsvr.name + "' changed to '" + svr.name + "'", {svrid: svr.id});
+				if(oldsvrdata.name!=svr.name && serverDocument.config.moderation.status_messages.server_name_updated.isEnabled) {
+					winston.info("Name of server '" + oldsvrdata.name + "' changed to '" + svr.name + "'", {svrid: svr.id});
 					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_name_updated.channel_id);
 					if(ch) {
-						ch.createMessage("Server name changed from `" + oldsvr.name + "` to `" + svr.name + "`");
+						ch.createMessage("Server name changed from `" + oldsvrdata.name + "` to `" + svr.name + "`");
 					}
 				}
 
 				// Send server_icon_updated_message if necessary
-				if(oldsvr.icon!=svr.icon && serverDocument.config.moderation.status_messages.server_icon_updated_message.isEnabled) {
-					winston.info("Icon of server '" + oldsvr.name + "' changed from '" + oldsvr.icon + "' to '" + svr.icon + "'", {svrid: svr.id});
+				if(oldsvrdata.icon!=svr.icon && serverDocument.config.moderation.status_messages.server_icon_updated_message.isEnabled) {
+					winston.info("Icon of server '" + oldsvrdata.name + "' changed from '" + oldsvrdata.icon + "' to '" + svr.icon + "'", {svrid: svr.id});
 					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_icon_updated_message.channel_id);
 					if(ch) {
-						ch.createMessage("Server icon changed from `" + (oldsvr.icon ? ("https://cdn.discordapp.com/icons/" + svr.id + "/" + oldsvr.icon + ".jpg") : "<no icon>") + "` to `" + (svr.iconURL || "<no icon>") + "`");
+						ch.createMessage("Server icon changed from `" + (oldsvrdata.icon ? ("https://cdn.discordapp.com/icons/" + svr.id + "/" + oldsvrdata.icon + ".jpg") : "<no icon>") + "` to `" + (svr.iconURL || "<no icon>") + "`");
 					}
 				}
 
 				// Send server_region_updated_message if necessary
-				if(oldsvr.region!=svr.region && serverDocument.config.moderation.status_messages.server_region_updated_message.isEnabled) {
-					winston.info("Region of server '" + oldsvr.name + "' changed from " + oldsvr.region + " to " + svr.region, {svrid: svr.id});
+				if(oldsvrdata.region!=svr.region && serverDocument.config.moderation.status_messages.server_region_updated_message.isEnabled) {
+					winston.info("Region of server '" + oldsvrdata.name + "' changed from " + oldsvrdata.region + " to " + svr.region, {svrid: svr.id});
 					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_region_updated_message.channel_id);
 					if(ch) {
-						ch.createMessage("Server region changed from " + getRegionString(oldsvr.region) + " to " + getRegionString(svr.region));
+						ch.createMessage("Server region changed from " + getRegionString(oldsvrdata.region) + " to " + getRegionString(svr.region));
 					}
 
 					// Format region string

@@ -7,11 +7,11 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
                 msg.channel.createMessage("```" + res.body.magic.answer + "```");
             } else {
                 winston.error("Failed to fetch 8ball answer", {svrid: msg.channel.guild.id, chid: msg.channel.id});
-                msg.channel.createMessage("Broken 8ball :8ball: :confused:");
+                msg.channel.createMessage("Broken 8ball 🎱😕");
             }
         });
     } else {
         winston.warn("No parameters provided for 8ball command", {svrid: msg.channel.guild.id, chid: msg.channel.id});
-        msg.channel.createMessage(msg.author.mention + " You tell me... :stuck_out_tongue_winking_eye:");
+        msg.channel.createMessage(msg.author.mention + " You tell me... 😜");
     }
 }

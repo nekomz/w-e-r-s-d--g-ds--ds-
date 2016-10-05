@@ -1,3 +1,4 @@
+const commands = require("./../Configuration/commands.json");
 const nsfwFilter = require("./../Configuration/filter.json");
 const checkFiltered = require("./../Modules/FilterChecker.js");
 const translate = require("./../Modules/MicrosoftTranslate.js");
@@ -12,16 +13,16 @@ var commandModules = {};
 module.exports = (bot, db, config, winston, msg) => {
 	// Load commands if necessary
 	if(Object.keys(privateCommandModules).length==0) {
-		for(var i=0; i<config.pm_commands.length; i++) {
+		for(var command in commands.pm) {
 			try {
-				privateCommandModules[config.pm_commands[i]] = require("./../Commands/PM/" + config.pm_commands[i] + ".js");
+				privateCommandModules[command] = require("./../Commands/PM/" + command + ".js");
 			} catch(err) {}
 		}
 	}
 	if(Object.keys(commandModules).length==0) {
-		for(var i=0; i<config.commands.length; i++) {
+		for(var command in commands.public) {
 			try {
-				commandModules[config.commands[i]] = require("./../Commands/" + config.commands[i] + ".js");
+				commandModules[command] = require("./../Commands/Public/" + command + ".js");
 			} catch(err) {}
 		}
 	}
@@ -51,7 +52,7 @@ module.exports = (bot, db, config, winston, msg) => {
 					for(var i=0; i<config.maintainers.length; i++) {
 						var usr = bot.users.get(config.maintainers[i]);
 						usr.getDMChannel().then(ch => {
-							ch.createMessage("**@" + msg.author.username + "** just sent me this PM :envelope:```" + msg.cleanContent + "```");
+							ch.createMessage("**@" + msg.author.username + "** just sent me this PM 📨```" + msg.cleanContent + "```");
 						});
 					}
 				}
@@ -63,16 +64,16 @@ module.exports = (bot, db, config, winston, msg) => {
 					command = command.substring(0, command.indexOf(" "));
 					suffix = msg.content.substring(msg.content.indexOf(" ")+1).trim();
 				}
-				if(config.pm_commands.indexOf(command)>-1) {
+				if(commands.pm[command]) {
 					winston.info("Treating '" + msg.cleanContent + "' as a PM command", {usrid: msg.author.id});
 					try {
 						privateCommandModules[command](bot, db, config, winston, userDocument, msg, suffix, {
-							usage: config.pm_command_usages[command]
+							usage: commands.pm[command].usage
 						});
 					} catch(err) {
 						winston.error("Failed to process PM command '" + command + "'", {usrid: msg.author.id}, err);
 						msg.author.getDMChannel().then(ch => {
-							ch.createMessage("Something went wrong :scream:");
+							ch.createMessage("Something went wrong 😱");
 						});
 					}
 					return;
@@ -360,12 +361,12 @@ module.exports = (bot, db, config, winston, msg) => {
     							// Check if message is a command, tag command, or extension trigger
     							var command = bot.checkCommandTag(msg.content, serverDocument);
 							    // Check if it's a first-party command and if it's allowed to run here
-    							if(command && config.commands.indexOf(command.command)>-1 && serverDocument.config.commands[command.command].isEnabled && (!serverDocument.config.commands[command.command].isAdminOnly || memberBotAdmin>0) && serverDocument.config.commands[command.command].disabled_channel_ids.indexOf(msg.channel.id)==-1) {
+    							if(command && commands.public[command.command] && serverDocument.config.commands[command.command].isEnabled && memberBotAdmin>=serverDocument.config.commands[command.command].admin_level && serverDocument.config.commands[command.command].disabled_channel_ids.indexOf(msg.channel.id)==-1) {
     								// Increment command usage count
     								incrementCommandUsage(serverDocument, command.command);
 
     								// NSFW filter for command suffix
-    								if(memberBotAdmin==0 && config.filtered_commands.indexOf(command.command)>-1 && checkFiltered(serverDocument, msg.channel, command.suffix, true, false)) {
+    								if(memberBotAdmin==0 && commands.public[command.command].defaults.is_nsfw_filtered && checkFiltered(serverDocument, msg.channel, command.suffix, true, false)) {
     									// Delete offending message if necessary
     									if(serverDocument.config.moderation.filters.nsfw_filter.delete_message) {
     										msg.delete().then().catch(err => {
@@ -382,13 +383,10 @@ module.exports = (bot, db, config, winston, msg) => {
 	    								deleteCommandMessage(serverDocument, channelDocument, msg);
 
 										try {
-											commandModules[command.command](bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, command.suffix, {
-												usage: config.command_usages[command.command],
-												description: config.command_descriptions[command.command]
-											});
+											commandModules[command.command](bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, command.suffix, commands.public[command.command]);
 										} catch(err) {
 											winston.error("Failed to process command '" + command.command + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
-											msg.channel.createMessage("Something went wrong :scream:");
+											msg.channel.createMessage("Something went wrong 😱");
 										}
 										setCooldown(serverDocument, channelDocument);
 									}
@@ -404,7 +402,7 @@ module.exports = (bot, db, config, winston, msg) => {
 									// Check if it's a command or keyword extension trigger
 									var extensionApplied = false;
 									for(var i=0; i<serverDocument.extensions.length; i++) {
-										if((!serverDocument.extensions[i].isAdminOnly || memberBotAdmin>0) && serverDocument.extensions[i].enabled_channel_ids.indexOf(msg.channel.id)>-1) {
+										if(memberBotAdmin>=serverDocument.extensions[i].admin_level && serverDocument.extensions[i].enabled_channel_ids.indexOf(msg.channel.id)>-1) {
 											// Command extensions
 											if(serverDocument.extensions[i].type=="command" && command && command.command==serverDocument.extensions[i].key) {
 												winston.info("Treating '" + msg.cleanContent + "' as a trigger for command extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
