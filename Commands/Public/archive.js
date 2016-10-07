@@ -1,8 +1,8 @@
 const genToken = require("./../../Modules/GenerateToken.js");
 
-module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix) => {
+module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix, commandData) => {
     if(!suffix || isNaN(suffix)) {
-        winston.warn("No parameters provided for archive command", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+        winston.warn("Parameters not provided for " + commandData.name + " command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
         msg.channel.createMessage(msg.author.mention + " I'll need a number of messages to fetch, please 🔢");
     } else {
         var num = parseInt(suffix);
@@ -40,14 +40,14 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
         };
         doArchive(num>100 ? 100 : num, msg.channel.lastMessageID, (err, archive) => {
             if(err) {
-                winston.error("Failed to archive " + suffix + " messages", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+                winston.error("Failed to archive " + suffix + " messages", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
                 msg.channel.createMessage("🛑 Discord prevented me from completing this task, are you sure I have message history permisssions?");
             } else {
                 msg.channel.createMessage("Here you go! ✅", {
                     file: JSON.stringify(archive, null, 4),
-                    name: msg.channel.guild.name + "-" + msg.channel.name + "-" + Date.now() + ".json"
+                    name: msg.guild.name + "-" + msg.channel.name + "-" + Date.now() + ".json"
                 }).catch(err => {
-                    winston.error("Failed to send archive", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+                    winston.error("Failed to send archive", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
                     msg.channel.createMessage("Discord is getting mad at me. 😓 Try a smaller number of messages.");
                 });
             }

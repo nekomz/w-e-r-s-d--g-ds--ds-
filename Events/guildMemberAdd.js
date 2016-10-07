@@ -13,7 +13,7 @@ module.exports = (bot, db, config, winston, svr, member) => {
 					if(ch) {
 						var channelDocument = serverDocument.channels.id(ch.id);
 						if(!channelDocument || channelDocument.bot_enabled) {
-							ch.createMessage(serverDocument.config.moderation.status_messages.new_member_message.messages[getRandomInt(0, serverDocument.config.moderation.status_messages.new_member_message.messages.length-1)].replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**").replaceAll("@mention", member.mention));
+							ch.createMessage(serverDocument.config.moderation.status_messages.new_member_message.messages.random().replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**").replaceAll("@mention", member.mention));
 						}
 					}
 				}
@@ -43,8 +43,3 @@ module.exports = (bot, db, config, winston, svr, member) => {
 		}
 	});
 };
-
-// Get a random integer in specified range, inclusive
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}

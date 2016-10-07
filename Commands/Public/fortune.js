@@ -1,6 +1,5 @@
 const unirest = require("unirest");
 
-// Predicts a user's fortune
 module.exports = function fortune(bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix) {
     var categories = ["all", "computers", "cookie", "definitions", "miscellaneous", "people", "platitudes", "politics", "science", "wisdom"];
     if(suffix && categories.indexOf(suffix.toLowerCase())==-1) {
@@ -20,7 +19,7 @@ module.exports = function fortune(bot, db, config, winston, userDocument, server
             if(res.status==200) {
                 msg.channel.createMessage(res.body.fortune);
             } else {
-                winston.warn("Failed to fetch fortune", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+                winston.warn("Failed to fetch fortune", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
                 msg.channel.createMessage("I honestly don't know 😐");
             }
         });

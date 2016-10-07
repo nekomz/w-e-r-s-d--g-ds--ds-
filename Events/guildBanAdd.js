@@ -8,7 +8,7 @@ module.exports = (bot, db, config, winston, svr, member) => {
 				if(ch) {
 					var channelDocument = serverDocument.channels.id(ch.id);
 					if(!channelDocument || channelDocument.bot_enabled) {
-						var toSend = serverDocument.config.moderation.status_messages.member_banned_message.messages[getRandomInt(0, serverDocument.config.moderation.status_messages.member_banned_message.messages.length-1)].replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**");
+						var toSend = serverDocument.config.moderation.status_messages.member_banned_message.messages.random().replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**");
 						var banDocument = serverDocument.member_banned_data.id(member.id);
 						if(banDocument) {
 							var creator = svr.members.get(banDocument.creator_id);
@@ -29,8 +29,3 @@ module.exports = (bot, db, config, winston, svr, member) => {
 		}
 	});
 };
-
-// Get a random integer in specified range, inclusive
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}

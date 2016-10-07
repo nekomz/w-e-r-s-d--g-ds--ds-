@@ -25,13 +25,10 @@
 			document.getElementById("frame").style.paddingRight = "0px";
 		}
 	}
-
-	String.prototype.replaceAll = function(target, replacement) {
-		return this.replace(new RegExp(target, "g"), replacement);
-	};
 	</script>
 </head>
 <body>
+	<% include ../partials/donate %>
 	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/header-image');background-size: cover;">
 		<div class="hero-head">
 			<% include ../partials/header %>
@@ -44,7 +41,7 @@
 				<div class="columns">
 					<div class="column is-8 is-offset-2">
 						<p class="control has-addons has-addons-centered">
-							<input id="search-input" class="input is-expanded is-large header-search-box" type="text" placeholder="I'm looking for..." value="<%= activeSearchQuery.split('----').join('#') %>">
+							<input id="search-input" class="input is-expanded is-large header-search-box" type="text" placeholder="I'm looking for..." value="<%= activeSearchQuery %>">
 							<a id="search-button" class="button is-primary is-large header-search-box">
 								<span class="icon">
 									<i class="fa fa-search"></i>
@@ -65,12 +62,14 @@
 								<span class="icon">
 									<i class="fa fa-server"></i>
 								</span>
-								Servers
 								<% if(mode=="servers") { %>
+									Servers
 									&nbsp;
 									<span class="tag is-small is-primary">
 										<%= rawServerCount %>
 									</span>
+								<% } else { %>
+									<span>Servers</span>
 								<% } %>
 							</a>
 						</li>
@@ -79,12 +78,14 @@
 								<span class="icon">
 									<i class="fa fa-user"></i>
 								</span>
-								Users
 								<% if(mode=="users") { %>
+									Users
 									&nbsp;
 									<span class="tag is-small is-primary">
 										<%= rawUserCount %>
 									</span>
+								<% } else { %>
+									<span>Users</span>
 								<% } %>
 							</a>
 						</li>
@@ -144,4 +145,5 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>

@@ -33,6 +33,7 @@
 	</script>
 </head>
 <body onload="saveFormState();setUserAutocomplete();">
+	<% include ../partials/donate %>
 	<% include ../partials/dashboard-header %>
 	<% include ../partials/dashboard-socket-updates %>
 		
@@ -82,7 +83,7 @@
 														<%= config.global_blocklist[i].id %>
 													</td>
 													<td>
-														<button class="button is-small is-danger" name="block-<%= i %>-removed">
+														<button class="button is-small is-danger" name="block-<%= i %>-removed" onclick="saveFormState();">
 															<span>Remove</span>
 															<span class="icon is-small">
 																<i class="fa fa-times"></i>
@@ -131,5 +132,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

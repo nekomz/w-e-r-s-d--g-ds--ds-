@@ -31,6 +31,7 @@
 	</script>
 </head>
 <body onload="setUserAutocomplete('<%= serverData.id %>');">
+	<% include ../partials/donate %>
 	<% include ../partials/dashboard-header %>
 	<% include ../partials/dashboard-socket-updates %>
 		
@@ -75,12 +76,16 @@
 													</td>
 													<td>
 														<%= configData.blocked[i].name %>
+														<% if(configData.blocked[i].isGlobal) { %>
+															&nbsp;
+															<span class="tag">Global</span>
+														<% } %>
 													</td>
 													<td>
 														<%= configData.blocked[i].id %>
 													</td>
 													<td>
-														<button class="button is-small is-danger" name="block-<%= i %>-removed">
+														<button class="button is-small is-danger" name="block-<%= i %>-removed" onclick="saveFormState();">
 															<span>Remove</span>
 															<span class="icon is-small">
 																<i class="fa fa-times"></i>
@@ -129,5 +134,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

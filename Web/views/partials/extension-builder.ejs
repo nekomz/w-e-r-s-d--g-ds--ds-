@@ -90,7 +90,7 @@ function publishExtension() {
 			<label class="label">Permissions</label>
 			<p class="control">
 				<span class="select">
-					<select name="admin_level">
+					<select name="command-admin_level">
 						<option value="0" <%= extensionData.admin_level==0 ? "" : "selected" %>>@everyone</option>
 						<option value="1" <%= extensionData.admin_level==1 ? "selected" : "" %>>Admin level &ge;1</option>
 						<option value="2" <%= extensionData.admin_level==2 ? "selected" : "" %>>Admin level &ge;2</option>
@@ -128,7 +128,7 @@ function publishExtension() {
 			<label class="label">Permissions</label>
 			<p class="control">
 				<span class="select">
-					<select name="admin_level">
+					<select name="keyword-admin_level">
 						<option value="0" <%= extensionData.admin_level==0 ? "" : "selected" %>>@everyone</option>
 						<option value="1" <%= extensionData.admin_level==1 ? "selected" : "" %>>Admin level &ge;1</option>
 						<option value="2" <%= extensionData.admin_level==2 ? "selected" : "" %>>Admin level &ge;2</option>

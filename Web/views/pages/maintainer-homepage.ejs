@@ -12,6 +12,7 @@
 	</script>
 </head>
 <body onload="saveFormState();updatePreview(document.getElementById('message-html').value);">
+	<% include ../partials/donate %>
 	<% include ../partials/dashboard-header %>
 	<% include ../partials/dashboard-socket-updates %>
 		
@@ -86,5 +87,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

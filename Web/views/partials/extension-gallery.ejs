@@ -72,7 +72,7 @@ function doAction(extid, action) {
 						</div>
 						<div class="media-content">
 							<p class="title is-5"><%= extensions[i].owner.name + "#" + extensions[i].owner.discriminator %></p>
-							<p class="subtitle is-6" title="<%= extensions[i].rawLastUpdated %>">Last updated <strong><%= extensions[i].relativeLastUpdated==0 ? "today" : (extensions[i].relativeLastUpdated + " day" + (extensions[i].relativeLastUpdated==1 ? "" : "s") + " ago") %></strong></p>
+							<p class="subtitle is-6" title="<%= extensions[i].rawLastUpdated %>">Last updated <strong><%= extensions[i].relativeLastUpdated %></strong></p>
 						</div>
 					</div>
 				</div>

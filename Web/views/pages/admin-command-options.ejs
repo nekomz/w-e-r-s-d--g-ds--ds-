@@ -7,6 +7,7 @@
 	<script src="/js/form-change-listener.js"></script>
 </head>
 <body onload="saveFormState();">
+	<% include ../partials/donate %>
 	<% include ../partials/dashboard-header %>
 	<% include ../partials/dashboard-socket-updates %>
 	
@@ -64,6 +65,14 @@
 								</span>
 								<span class="help">During this time after the use of any command, users won't be able to use other commands in the channel. Does not apply to admins. Can be overridden per-channel by the <code><%= configData.command_prefix %>cool</code> command.</span>
 							</p>
+							<label class="label">Chatterbot</label>
+							<p class="control">
+								<label class="checkbox">
+								<input name="chatterbot" type="checkbox" <%= configData.chatterbot ? "checked" : "" %>>
+									Allow members to converse with AwesomeBot
+								</label>
+								<span class="help">The <a href="http://www.program-o.com/">Program-O</a> chatbot will be used if the bot is mentioned and a command is not being used, e.g. <code><strong>@<%= botName %></strong> Hello! How are you?</code>.</span>
+							</p>
 							<br>
 							<h4 class="subtitle is-4">
 								Content Fetching
@@ -93,5 +102,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

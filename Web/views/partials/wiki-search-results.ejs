@@ -1,31 +1,18 @@
 <% if(searchResults.length>0) { %>
-	<% for(var i=0; i<searchResults.length; i++) { %>
-		<div class="box">
-			<a class="title is-3" href="/wiki?page=<%= searchResults[i].title %>">
-				<%= searchResults[i].title %>
-			</a>
-			<br><br>
-			<div class="content">
-				<%- searchResults[i].matchText %>
+	<div class="content">
+		<% for(var i=0; i<searchResults.length; i++) { %>
+			<div class="box">
+				<a class="title is-3" href="/wiki/<%= searchResults[i].title %>">
+					<%= searchResults[i].title %>
+				</a>
+				<br><br>
+				<div class="content">
+					<%- searchResults[i].matchText %>
+				</div>
 			</div>
-		</div>
-	<% } %>
+		<% } %>
+	</div>
 <% } else { %>
-	<article class="message is-danger">
-		<div class="message-header">
-			<span class="icon">
-				<i class="fa fa-meh-o"></i>
-			</span>
-			<span>No Results</span>
-		</div>
-		<div class="message-body">
-			There aren't any wiki pages that matched your search. 
-			<a class="button is-small" href="/wiki?page=Home">
-				<span class="icon is-small">
-					<i class="fa fa-chevron-left"></i>
-				</span>
-				<span>Reset</span>
-			</a>
-		</div>
-	</article>
+	<% var resetUrl = "/wiki/Home"; %>
+	<% include ../partials/no-results %>
 <% } %>

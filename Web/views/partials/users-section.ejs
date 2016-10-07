@@ -12,7 +12,7 @@
 </style>
 <script>
 function searchUsers(query) {
-	window.location.href = "/activity/users?q=" + encodeURI(query.replaceAll("#", "----"));
+	window.location.href = "/activity/users?q=" + encodeURIComponent(query);
 }
 
 document.getElementById("search-button").href = "javascript:searchUsers(document.getElementById('search-input').value);";
@@ -51,7 +51,7 @@ $.getJSON("/userlist", function(data) {
 								<span class="tag is-medium <%= data.userProfile.statusColor %>"><%= data.userProfile.status.charAt(0).toUpperCase() + data.userProfile.status.slice(1) %></span>
 							</h2>
 							<h5 class="subtitle">
-								Joined Discord <span title="<%= data.userProfile.rawAccountAge %>"><%= data.userProfile.roundedAccountAge %> day<%= data.userProfile.roundedAccountAge==1 ? "" : "s" %> ago</span>
+								Joined Discord <span title="<%= data.userProfile.rawAccountAge %>"><%= data.userProfile.roundedAccountAge %></span>
 							</h5>
 							<div class="content">
 								<h4 class="title is-3">
@@ -66,7 +66,7 @@ $.getJSON("/userlist", function(data) {
 										<span class="icon is-medium">
 											<i class="fa fa-clock-o"></i>
 										</span>
-										<span>Seen <span title="<%= data.userProfile.lastSeen %>"><strong><%= data.userProfile.rawLastSeen %></strong>ago</span></span>
+										<span>Seen <span title="<%= data.userProfile.rawLastSeen %>"><strong><%= data.userProfile.lastSeen %></strong></span></span>
 										<br>
 									<% } %>
 									<span class="icon is-medium">

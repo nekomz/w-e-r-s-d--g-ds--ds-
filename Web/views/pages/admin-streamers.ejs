@@ -33,6 +33,7 @@
 	</script>
 </head>
 <body onload="saveFormState();">
+	<% include ../partials/donate %>
 	<% include ../partials/dashboard-header %>
 	<% include ../partials/dashboard-socket-updates %>
 		
@@ -49,7 +50,7 @@
 					<div class="container">
 						<article class="message is-primary">
 							<div class="message-body">
-								Discord is a gamer-focused platform, so a lot of Discord servers have corresponding stream accounts on <strong>Twitch</strong> and <strong>YouTube Gaming</strong>. AwesomeBot s
+								Discord is a gamer-focused platform, so a lot of Discord servers have corresponding stream accounts on <strong>Twitch</strong> and <strong>YouTube Gaming</strong>. AwesomeBot supports checking for when streams go live (add them below) and has a corresponding <code>streamers</code> command to display information about the status of a stream.
 							</div>
 						</article>
 					</div>
@@ -97,7 +98,7 @@
 														<%= configData.streamers_data[i].live_state ? "Live!" : "Offline" %>
 													</td>
 													<td>
-														<button class="button is-small is-danger" name="streamer-<%= i %>-removed">
+														<button class="button is-small is-danger" name="streamer-<%= i %>-removed" onclick="saveFormState();">
 															<span>Remove</span>
 															<span class="icon is-small">
 																<i class="fa fa-times"></i>
@@ -165,5 +166,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

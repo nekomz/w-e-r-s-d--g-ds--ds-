@@ -21,6 +21,7 @@
 	</script>
 </head>
 <body>
+	<% include ../partials/donate %>
 	<% include ../partials/dashboard-header %>
 	<% include ../partials/dashboard-socket-updates %>
 		
@@ -128,7 +129,7 @@
 												<%= polls[i].title %>
 											</h3>
 											<h5 class="subtitle is-5 has-text-centered">
-												Created by <strong>@<%= polls[i].creator %></strong> at <%= polls[i].created %>
+												Created by <strong>@<%= polls[i].creator %></strong> <span title="<%= polls[i].rawCreated %>"><%= polls[i].relativeCreated %></span>
 											</h5>
 											<div class="level is-mobile">
 												<div class="level-item has-text-centered">
@@ -284,5 +285,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

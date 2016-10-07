@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <meta name="description" content="AwesomeBot is a fun, easy-to-use, feature-packed bot designed to increase activity on your Discord server">
-<meta name="author" content="BitQuote, mistmurk">
+<meta name="author" content="BitQuote">
 <link rel="shortcut icon" type="image/png" href="/img/icon.png">
 <meta name="theme-color" content="#009688">
 
@@ -19,15 +19,46 @@
 function setUserAutocomplete(svrid) {
 	$.getJSON("/userlist" + (svrid ? ("?svrid=" + svrid) : ""), function(data) {
 		new autoComplete({
-		    selector: ".user-autocomplete",
-		    minChars: 2,
-		    source: function(query, res) {
-		    	query = query.toLowerCase();
-		       	res(data.filter(function(a) {
-		       		return a.toLowerCase().indexOf(query)>-1;
-		       	}));
-		    }
+			selector: ".user-autocomplete",
+			minChars: 2,
+			source: function(query, res) {
+				query = query.toLowerCase();
+				res(data.filter(function(a) {
+					return a.toLowerCase().indexOf(query)>-1;
+				}));
+			}
 		});
 	});
 }
+
+$(window).scroll(function() {
+	if($("#form-buttons") && $("#form-buttons").is(":visible")) {
+		$("#scroll-top-button-container").css("padding-bottom", "75px");
+	} else {
+		$("#scroll-top-button-container").css("padding-bottom", "25px");
+	}
+	if($(this).scrollTop()>200 && $(this).scrollTop()<$(document).height()-1200) {
+		$("#scroll-top-button-container").fadeIn(86);
+	} else {
+		$("#scroll-top-button-container").fadeOut(86);
+	}
+});
+
+$("#scroll-top-button").click(function() {
+	$("html, body").animate({
+		scrollTop: 0
+	}, 172);
+	return false;
+});
+
+var kkeys = [];
+var konami = "38,38,40,40,37,39,37,39,66,65";
+window.addEventListener("keydown", function(e) {
+	kkeys.push(e.keyCode);
+	if(kkeys.toString().indexOf(konami)>-1) {
+		document.body.innerHTML = document.body.innerHTML.replace(/AwesomeBot/g,"TacoBot");
+		document.body.innerHTML = document.body.innerHTML.split("/img/icon.png").join("/img/tinytaco.jpg");
+		document.getElementById("header").style.backgroundImage = "url('/img/header-bg-taco.jpg')";
+	}
+}, true);
 </script>

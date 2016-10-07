@@ -26,6 +26,7 @@
 	</script>
 </head>
 <body>
+	<% include ../partials/donate %>
 	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/header-image');background-size: cover;">
 		<div class="hero-head">
 			<% include ../partials/header %>
@@ -69,12 +70,14 @@
 								<span class="icon">
 									<i class="fa fa-fa"></i>
 								</span>
-								Gallery
 								<% if(mode=="gallery") { %>
+									Gallery
 									&nbsp;
 									<span class="tag is-small is-primary">
 										<%= rawCount %>
 									</span>
+								<% } else { %>
+									<span>Gallery</span>
 								<% } %>
 							</a>
 						</li>
@@ -83,12 +86,14 @@
 								<span class="icon">
 									<i class="fa fa-clock-o"></i>
 								</span>
-								Queue
 								<% if(mode=="queue") { %>
+									Queue
 									&nbsp;
 									<span class="tag is-small is-primary">
 										<%= rawCount %>
 									</span>
+								<% } else { %>
+									<span>Queue</span>
 								<% } %>
 							</a>
 						</li>
@@ -98,12 +103,14 @@
 									<span class="icon">
 										<i class="fa fa-dashboard"></i>
 									</span>
-									My Extensions
 									<% if(mode=="my") { %>
+										My Extensions
 										&nbsp;
 										<span class="tag is-small is-primary">
 											<%= rawCount %>
 										</span>
+									<% } else { %>
+										<span>My Extensions</span>
 									<% } %>
 								</a>
 							</li>
@@ -151,4 +158,5 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>

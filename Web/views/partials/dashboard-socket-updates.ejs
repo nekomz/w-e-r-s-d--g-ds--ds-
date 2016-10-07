@@ -1,8 +1,9 @@
 <script src="/js/socket.io-1.4.5.js"></script>
 <script>
 var socket = io("<%= currentPage %>");
+var hide_update_modal = false;
 socket.on("update", function(data) {
-	if("<%= serverData.isMaintainer ? 'maintainer' : serverData.id %>"==data) {
+	if(!hide_update_modal && "<%= serverData.isMaintainer ? 'maintainer' : serverData.id %>"==data) {
 		$("html").addClass("is-clipped");
 	    $("#update-modal").addClass("is-active");
     }

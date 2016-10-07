@@ -1,4 +1,4 @@
-const config = require("./../../Configuration/config.json");
+const commands = require("./../../Configuration/commands.json");
 const mongoose = require("mongoose");
 
 // Server's configs (commands, admins, etc.)
@@ -8,6 +8,7 @@ module.exports = {
 		level: {type: Number, default: 1, enum: [1, 2, 3]}
 	})],
 	blocked: [String],
+	chatterbot: {type: Boolean, default: true},
 	command_cooldown: {type: Number, default: 0, min: 0, max: 300000},
 	command_fetch_properties: {
 		default_count: {type: Number, default: 3, min: 1, max: 10},
@@ -246,22 +247,13 @@ module.exports = {
 
 // Get command(s) structure for server config schema above
 function getCommands() {
-	// List of all commands
-	const commands = config.commands;
-	const disabledCommands = config.disabled_commands;
-	const adminCommands = config.admin_commands;
-
 	var commandsStructure = {};
-	for(var i=0; i<commands.length; i++) {
-		commandsStructure[commands[i]] = getCommandStructure(disabledCommands.indexOf(commands[i])==-1, adminCommands.indexOf(commands[i])>-1);
+	for(var command in commands.public) {
+		commandsStructure[command] = {
+			isEnabled: {type: Boolean, default: commands.public[command].defaults.is_enabled},
+			admin_level: {type: Number, default: commands.public[command].defaults.admin_level, min: 0, max: 4},
+			disabled_channel_ids: [String]
+		};
 	}
 	return commandsStructure;
-}
-
-function getCommandStructure(isEnabled, isAdminOnly) {
-	return {
-		isEnabled: {type: Boolean, default: isEnabled},
-		isAdminOnly: {type: Boolean, default: isAdminOnly},
-		disabled_channel_ids: [String]
-	};
 }

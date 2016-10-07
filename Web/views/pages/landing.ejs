@@ -28,8 +28,18 @@
 		}
 	}
 	</style>
+	<script>
+	$(document).ready(function() {
+		$(".section-shortcut-link").click(function() {
+			$("html, body").animate({
+				scrollTop: $("#" + this.href.substring(this.href.lastIndexOf("#")+1)).offset().top
+			}, 172);
+		});
+	});
+	</script>
 </head>
 <body>
+	<% include ../partials/donate %>
 	<section id="header" class="hero is-primary is-fullheight is-bold" style="background: url('/header-image');background-size: cover;">
 		<div class="hero-head">
 			<% include ../partials/header %>
@@ -65,28 +75,28 @@
 			<nav class="nav">
 				<div class="container" style="overflow-x: scroll;">
 					<div class="nav-center">
-						<a class="nav-item is-tab " href="#about">
+						<a class="nav-item is-tab section-shortcut-link" href="#about">
 							About
 						</a>
-						<a class="nav-item is-tab " href="#media">
+						<a class="nav-item is-tab section-shortcut-link" href="#media">
 							Media
 						</a>
-						<a class="nav-item is-tab " href="#features">
+						<a class="nav-item is-tab section-shortcut-link" href="#features">
 							Features
 						</a>
-						<a class="nav-item is-tab " href="#stats">
+						<a class="nav-item is-tab section-shortcut-link" href="#stats">
 							Stats
 						</a>
-						<a class="nav-item is-tab " href="#customizability">
+						<a class="nav-item is-tab section-shortcut-link" href="#customizability">
 							Customizability
 						</a>
-						<a class="nav-item is-tab " href="#servers">
+						<a class="nav-item is-tab section-shortcut-link" href="#servers">
 							Servers
 						</a>
-						<a class="nav-item is-tab " href="#team">
+						<a class="nav-item is-tab section-shortcut-link" href="#team">
 							Team
 						</a>
-						<a class="nav-item is-tab " href="#links">
+						<a class="nav-item is-tab section-shortcut-link" href="#links">
 							More
 						</a>
 					</div>
@@ -438,5 +448,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

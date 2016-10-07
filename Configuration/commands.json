@@ -4,13 +4,13 @@
             "usage": ""
         },
         "config": {
-            "usage": ""
+            "usage": " <server>"
         },
         "giveaway": {
             "usage": ""
         },
         "help": {
-            "usage": ""
+            "usage": " [command]"
         },
         "join": {
             "usage": ""
@@ -19,6 +19,9 @@
             "usage": ""
         },
         "profile": {
+            "usage": ""
+        },
+        "reload": {
             "usage": ""
         },
         "reminders": {
@@ -218,22 +221,13 @@
                 "admin_level": 0
             }
         },
-        "emoji": {
-            "usage": "",
-            "description": "Fetches the large version of an emoji",
-            "defaults": {
-                "is_enabled": true,
-                "is_nsfw_filtered": false,
-                "admin_level": 0
-            }
-        },
         "eval": {
             "usage": "",
             "description": "",
             "defaults": {
                 "is_enabled": true,
                 "is_nsfw_filtered": false,
-                "admin_level": 0
+                "admin_level": 4
             }
         },
         "fortune": {

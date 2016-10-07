@@ -5,8 +5,23 @@
 	<% include ../partials/head %>
 
 	<script src="/js/form-change-listener.js"></script>
+	<script>
+	function updateExtensionFromGallery(extid) {
+		$.ajax({
+			type: "POST",
+			url: "/dashboard/other/extensions?svrid=<%= serverData.id %>",
+			data: {
+				"new-gallery": extid
+			},
+			success: function(data) {
+				window.location.reload();
+			}
+		});
+	}
+	</script>
 </head>
 <body onload="saveFormState();">
+	<% include ../partials/donate %>
 	<% include ../partials/dashboard-header %>
 	<% include ../partials/dashboard-socket-updates %>
 		
@@ -49,6 +64,12 @@
 												<tr>
 													<td>
 														<%= configData.extensions[i].name %>
+														<% if(configData.extensions[i].updates_available>0) { %>
+															&nbsp;
+															<a class="tag is-primary" onclick="updateExtensionFromGallery('<%= configData.extensions[i]._id %>');" title="Updating from gallery will overwrite your changes">
+																<%= configData.extensions[i].updates_available %> update<%= configData.extensions[i].updates_available==1 ? "" : "s" %> available
+															</a>
+														<% } %>
 													</td>
 													<td>
 														<%= configData.extensions[i]._id %>
@@ -66,7 +87,7 @@
 															</span>
 															<span>Edit</span>
 														</a>
-														<button class="button is-small is-danger" name="extension-<%= i %>-removed">
+														<button class="button is-small is-danger" name="extension-<%= i %>-removed" onclick="saveFormState();">
 															<span>Remove</span>
 															<span class="icon is-small">
 																<i class="fa fa-times"></i>
@@ -115,5 +136,6 @@
 	</section>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

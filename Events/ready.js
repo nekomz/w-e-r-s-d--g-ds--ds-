@@ -45,13 +45,25 @@ module.exports = (bot, db, config, winston) => {
 					process.exit(1);
 				} else {
 					winston.info("Successfully inserted " + newServerDocuments.length + " new server documents into database");
-					setBotGame();
+					pruneServerData();
 				}
 			});
 		} else {
-			setBotGame();
+			pruneServerData();
 		}
 	});
+
+	// Delete data for old servers
+	function pruneServerData() {
+		db.servers.find({_id: {"$nin": bot.guilds.map(a => {
+			return a.id;
+		})}}).remove(err => {
+			if(err) {
+				winston.error("Failed to prune old server documents", err);
+			}
+			setBotGame();
+		});
+	}
 
 	// Set bot's "now playing" game
 	function setBotGame() {

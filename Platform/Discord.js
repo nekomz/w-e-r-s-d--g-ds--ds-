@@ -1,4 +1,9 @@
+const commands = require("./../Configuration/commands.json");
 const removeMd = require("remove-markdown");
+const reload = require("require-reload")(require);
+
+var privateCommandModules = {};
+var commandModules = {};
 
 module.exports = (db, auth, config) => {
 	// Create a new Eris bot client
@@ -40,7 +45,9 @@ module.exports = (db, auth, config) => {
     bot.awaitMessage = (chid, usrid, filter, callback) => {
     	if(!callback) {
     		callback = filter;
-    		filter = null;
+    		filter = () => {
+    			return true;
+			};
     	}
     	if(!bot.messageListeners[chid]) {
     		bot.messageListeners[chid] = {};
@@ -58,12 +65,18 @@ module.exports = (db, auth, config) => {
     		}
     	}, 60000);
     };
+    bot.removeMessageListener = (chid, usrid) => {
+    	delete bot.messageListeners[chid][usrid];
+		if(Object.keys(bot.messageListeners[chid])==0) {
+			delete bot.messageListeners[chid];
+		}
+    };
 
 	// Get the command prefix for a server
 	bot.getCommandPrefix = (svr, serverDocument) => {
 		return serverDocument.config.command_prefix=="@mention" ? ("@" + (svr.members.get(bot.user.id).nick || bot.user.username) + " ") : serverDocument.config.command_prefix;
 	};
-	
+
 	// Checks if message contains a command tag, returning the command and post-text
 	bot.checkCommandTag = (message, serverDocument) => {
 		message = message.trim();
@@ -83,7 +96,7 @@ module.exports = (db, auth, config) => {
     		};
     	} else {
         	return {
-        		command: cmdstr.substring(0, cmdstr.indexOf(" ")).toLowerCase(), 
+        		command: cmdstr.substring(0, cmdstr.indexOf(" ")).toLowerCase(),
         		suffix: cmdstr.substring(cmdstr.indexOf(" ")+1).trim()
     		};
     	}
@@ -92,6 +105,84 @@ module.exports = (db, auth, config) => {
 	// Gets the name of a user on a server in accordance with config
 	bot.getName = (svr, serverDocument, member, ignoreNick) => {
 		return cleanName(((serverDocument.config.name_display.use_nick && !ignoreNick) ? (member.nick || member.user.username) : member.user.username) + (serverDocument.config.name_display.show_discriminator ? ("#" + member.user.discriminator) : ""));
+	};
+
+	// bot command handler
+	bot.reloadPrivateCommand = command => {
+		let success = false;
+		try {
+			privateCommandModules[command] = reload("./../Commands/PM/" + command + ".js");
+			success = true;
+		}
+		catch (err) {
+			success = false;
+		}
+		finally {
+			return success;
+		}
+	};
+
+	bot.reloadPublicCommand = command => {
+		let success = false;
+		try {
+			commandModules[command] = reload("./../Commands/Public/" + command + ".js");
+			success = true;
+		}
+		catch (err) {
+			success = false;
+		}
+		finally {
+			return success;
+		}
+	};
+
+	bot.reloadAllPrivateCommands = () => {
+		let command_keys = Object.keys(privateCommandModules);
+		if (!command_keys.length) {
+			command_keys = Object.keys(commands.pm);
+			command_keys.forEach((command_key, index, array) => {
+				bot.reloadPrivateCommand(command_key);
+			});
+		}
+	};
+
+	bot.reloadAllPublicCommands = () => {
+		let command_keys = Object.keys(commandModules);
+		if (!command_keys.length) {
+			command_keys = Object.keys(commands.public);
+			command_keys.forEach((command, index, array) => {
+				bot.reloadPublicCommand(command);
+			});
+		}
+	};
+
+	bot.reloadAllCommands = () => {
+		bot.reloadAllPrivateCommands();
+		bot.reloadAllPublicCommands();
+	};
+
+	bot.getPMCommandList = () => {
+		return Object.keys(commands.pm);
+	};
+
+	bot.getPublicCommandList = () => {
+		return Object.keys(commands.public);
+	};
+
+	bot.getPMCommand = command => {
+		return privateCommandModules[command];
+	};
+
+	bot.getPublicCommand = command => {
+		return commandModules[command];
+	};
+
+	bot.getPublicCommandMetadata = command => {
+		return commands.public[command];
+	};
+
+	bot.getPMCommandMetadata = command => {
+		return commands.pm[command];
 	};
 
 	// Finds a user on a server (by username, ID, etc.)
@@ -232,7 +323,7 @@ module.exports = (db, auth, config) => {
 	                        		member.edit({
 	                        			roles: member.roles
 	                        		}).then().catch(err => {
-	                        			winston.error("Failed to add member '" + member.user.username + " to role '" + role.name + "' on server '" + svr.name + "' for rank level up", {svrid: svr.id, usrid: member.id, roleid: role.id}, err);	
+	                        			winston.error("Failed to add member '" + member.user.username + " to role '" + role.name + "' on server '" + svr.name + "' for rank level up", {svrid: svr.id, usrid: member.id, roleid: role.id}, err);
 	                        		});
 	                        	}
 	                        }
@@ -326,7 +417,10 @@ module.exports = (db, auth, config) => {
 
 	// Check if user has a bot admin role on a server
 	bot.getUserBotAdmin = (svr, serverDocument, member) => {
-		if(svr.ownerID==member.id || config.maintainers.indexOf(member.id)>-1) {
+		if(config.maintainers.indexOf(member.id)>-1) {
+			return 4;
+		}
+		if(svr.ownerID==member.id) {
 			return 3;
 		}
 		var adminLevel = 0;
@@ -335,7 +429,7 @@ module.exports = (db, auth, config) => {
 			if(adminDocument && adminDocument.level>adminLevel) {
 				adminLevel = adminDocument.level;
 			}
-			if(adminLevel==3) {
+			if(adminLevel>=3) {
 				break;
 			}
 		}
@@ -384,5 +478,11 @@ function cleanName(str) {
 Object.assign(String.prototype, {
 	replaceAll(target, replacement) {
 		return this.split(target).join(replacement);
+	}
+});
+
+Object.assign(Array.prototype, {
+	random() {
+		return this[Math.floor(Math.random() * this.length)];
 	}
 });

@@ -1,4 +1,3 @@
-const commands = require("./../Configuration/commands.json");
 const nsfwFilter = require("./../Configuration/filter.json");
 const checkFiltered = require("./../Modules/FilterChecker.js");
 const translate = require("./../Modules/MicrosoftTranslate.js");
@@ -7,25 +6,9 @@ const runExtension = require("./../Modules/ExtensionRunner.js");
 const levenshtein = require("fast-levenshtein");
 const unirest = require("unirest");
 
-var privateCommandModules = {};
-var commandModules = {};
-
 module.exports = (bot, db, config, winston, msg) => {
 	// Load commands if necessary
-	if(Object.keys(privateCommandModules).length==0) {
-		for(var command in commands.pm) {
-			try {
-				privateCommandModules[command] = require("./../Commands/PM/" + command + ".js");
-			} catch(err) {}
-		}
-	}
-	if(Object.keys(commandModules).length==0) {
-		for(var command in commands.public) {
-			try {
-				commandModules[command] = require("./../Commands/Public/" + command + ".js");
-			} catch(err) {}
-		}
-	}
+	bot.reloadAllCommands();
 
 	// Get user data
 	db.users.findOrCreate({_id: msg.author.id}, (err, userDocument) => {
@@ -36,17 +19,19 @@ module.exports = (bot, db, config, winston, msg) => {
 			}
 
 			// Respond to message listener
-			if(bot.messageListeners[msg.channel.id] && bot.messageListeners[msg.channel.id][msg.author.id] && (!bot.messageListeners[msg.channel.id][msg.author.id].filter || bot.messageListeners[msg.channel.id][msg.author.id].filter(msg))) {
-				bot.messageListeners[msg.channel.id][msg.author.id].callback(msg);
-				delete bot.messageListeners[msg.channel.id][msg.author.id];
-				if(Object.keys(bot.messageListeners[msg.channel.id])==0) {
-					delete bot.messageListeners[msg.channel.id];
+			if(bot.messageListeners[msg.channel.id] && bot.messageListeners[msg.channel.id][msg.author.id]) {
+				if(message.content.toLowerCase()=="quit") {
+					bot.removeMessageListener(msg.channel.id, msg.author.id);
+					return;
+				} else if(bot.messageListeners[msg.channel.id][msg.author.id].filter(msg)) {
+					bot.messageListeners[msg.channel.id][msg.author.id].callback(msg);
+					bot.removeMessageListener(msg.channel.id, msg.author.id);
+					return;
 				}
-				return;
 			}
 
 			// Handle private messages
-			if(!msg.channel.guild) {
+			if(!msg.guild) {
 				// Forward PM to maintainer(s) if enabled
 				if(config.maintainers.indexOf(msg.author.id)==-1 && config.pm_forward) {
 					for(var i=0; i<config.maintainers.length; i++) {
@@ -64,11 +49,13 @@ module.exports = (bot, db, config, winston, msg) => {
 					command = command.substring(0, command.indexOf(" "));
 					suffix = msg.content.substring(msg.content.indexOf(" ")+1).trim();
 				}
-				if(commands.pm[command]) {
+				let command_func = bot.getPMCommand(command);
+				if(command_func) {
 					winston.info("Treating '" + msg.cleanContent + "' as a PM command", {usrid: msg.author.id});
 					try {
-						privateCommandModules[command](bot, db, config, winston, userDocument, msg, suffix, {
-							usage: commands.pm[command].usage
+						command_func(bot, db, config, winston, userDocument, msg, suffix, {
+							name: command,
+							usage: bot.getPMCommandMetadata(command).usage
 						});
 					} catch(err) {
 						winston.error("Failed to process PM command '" + command + "'", {usrid: msg.author.id}, err);
@@ -89,7 +76,7 @@ module.exports = (bot, db, config, winston, msg) => {
 			// Handle public messages
 			} else {
 				// Get server data
-				db.servers.findOne({_id: msg.channel.guild.id}, (err, serverDocument) => {
+				db.servers.findOne({_id: msg.guild.id}, (err, serverDocument) => {
 					if(!err && serverDocument) {
 						// Get channel data
 						var channelDocument = serverDocument.channels.id(msg.channel.id);
@@ -106,7 +93,7 @@ module.exports = (bot, db, config, winston, msg) => {
 							serverDocument.members.push({_id: msg.author.id});
 							memberDocument = serverDocument.members.id(msg.author.id);
 						}
-						const memberBotAdmin = bot.getUserBotAdmin(msg.channel.guild, serverDocument, msg.member);
+						const memberBotAdmin = bot.getUserBotAdmin(msg.guild, serverDocument, msg.member);
 
 						// Increment today's message count for server
 						serverDocument.messages_today++;
@@ -117,7 +104,7 @@ module.exports = (bot, db, config, winston, msg) => {
 							// Set now as the last active time for member
 							memberDocument.last_active = Date.now();
 							// Check if the user has leveled up a rank
-							bot.checkRank(winston, msg.channel.guild, serverDocument, msg.member, memberDocument);
+							bot.checkRank(winston, msg.guild, serverDocument, msg.member, memberDocument);
 						}
 
 						// Reset timer for room if applicable
@@ -127,12 +114,12 @@ module.exports = (bot, db, config, winston, msg) => {
 				            roomDocument.timer = setTimeout(() => {
 				                msg.channel.delete().then(() => {
 				                	try {
-			                        	winston.info("Auto-deleted room '" + msg.channel.name + "' on server '" + msg.channel.guild.name, {svrid: msg.channel.guild.id, chid: msg.channel.id});
+			                        	winston.info("Auto-deleted room '" + msg.channel.name + "' on server '" + msg.guild.name, {svrid: msg.guild.id, chid: msg.channel.id});
 			                        	roomDocument.remove();
 			                        	channelDocument.remove();
 			                        } catch(err) {}
 			                	}).catch(err => {
-			                		winston.info("Failed to auto-delete room '" + msg.channel.name + "' on server '" + msg.channel.guild.name, {svrid: msg.channel.guild.id, chid: msg.channel.id}, err);
+			                		winston.info("Failed to auto-delete room '" + msg.channel.name + "' on server '" + msg.guild.name, {svrid: msg.guild.id, chid: msg.channel.id}, err);
 		                		});
 				            }, 300000);
 				        }
@@ -140,7 +127,7 @@ module.exports = (bot, db, config, winston, msg) => {
 						// Check for message from AFK user
 						if(userDocument.afk_message) {
 							userDocument.afk_message = undefined;
-							winston.info("Auto-removed AFK message for member '" + msg.author.username + "' on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, usrid: msg.author.id});
+							winston.info("Auto-removed AFK message for member '" + msg.author.username + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, usrid: msg.author.id});
 						}
 
 						// Check for start command from server admin
@@ -156,12 +143,12 @@ module.exports = (bot, db, config, winston, msg) => {
 							// Delete offending message if necessary
 							if(serverDocument.config.moderation.filters.custom_filter.delete_message) {
 								msg.delete().then().catch(err => {
-									winston.error("Failed to delete filtered message from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+									winston.error("Failed to delete filtered message from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
 								});
 							}
 
 							// Handle this as a violation
-							bot.handleViolation(winston, msg.channel.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You used a filtered word in #" + msg.channel.name + " on " + msg.channel.guild.name, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** used a filtered word (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.channel.guild.name, "Word filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.custom_filter.action, serverDocument.config.moderation.filters.custom_filter.violator_role_id);
+							bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You used a filtered word in #" + msg.channel.name + " on " + msg.guild.name, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** used a filtered word (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.guild.name, "Word filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.custom_filter.action, serverDocument.config.moderation.filters.custom_filter.violator_role_id);
 						}
 
 						// Spam filter
@@ -177,7 +164,7 @@ module.exports = (bot, db, config, winston, msg) => {
 									try {
 										spamDocument.remove();
 										serverDocument.save(err => {
-											winston.error("Failed to save server data for spam filter", {svrid: msg.channel.guild.id}, err);
+											winston.error("Failed to save server data for spam filter", {svrid: msg.guild.id}, err);
 										});
 									} catch(err) {}
 								}, 45000);
@@ -188,13 +175,13 @@ module.exports = (bot, db, config, winston, msg) => {
 
 								// First-time spam filter violation
 								if(spamDocument.message_count==serverDocument.config.moderation.filters.spam_filter.message_sensitivity) {
-									winston.info("Handling first-time spam from member '" + msg.author.username + "' on server '" + msg.channel.guild.name + "' in channel '" + msg.channel.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+									winston.info("Handling first-time spam from member '" + msg.author.username + "' on server '" + msg.guild.name + "' in channel '" + msg.channel.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 
 									// Message user and tell them to stop
-									msg.author.getDMChannel().createMessage("Stop spamming in #" + msg.channel.name + " on " + msg.channel.guild.name + ". The chat moderators have been notified about this.");
+									msg.author.getDMChannel().createMessage("Stop spamming in #" + msg.channel.name + " on " + msg.guild.name + ". The chat moderators have been notified about this.");
 
 									// Message bot admins about user spamming
-									bot.messageBotAdmins(svr, serverDocument, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** is spamming in #" + msg.channel.name + " on " + msg.channel.guild.name);
+									bot.messageBotAdmins(svr, serverDocument, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** is spamming in #" + msg.channel.name + " on " + msg.guild.name);
 
 									// Deduct 25 AwesomePoints if necessary
 									if(serverDocument.config.commands.points.isEnabled) {
@@ -213,19 +200,19 @@ module.exports = (bot, db, config, winston, msg) => {
 									});
 								// Second-time spam filter violation
 								} else if(spamDocument.message_count==serverDocument.config.moderation.filters.spam_filter.message_sensitivity*2) {
-									winston.info("Handling second-time spam from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+									winston.info("Handling second-time spam from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 
 									// Delete spam messages if necessary
 									if(serverDocument.config.moderation.filters.spam_filter.delete_messages) {
 										bot.purgeChannel(msg.channel.id, 50, targetMessage => {
 											return targetMessage.author.id==msg.author.id && levenshtein.get(spamDocument.last_message_content, targetMessage.cleanContent)<3;
 										}).then().catch(err => {
-			                            	winston.error("Failed to delete spam messages from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+			                            	winston.error("Failed to delete spam messages from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 				                        });
 				                    }
 
 									// Handle this as a violation
-									bot.handleViolation(winston, svr, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You continued to spam in #" + msg.channel.name + " on " + msg.channel.guild.name, "**@" + bot.getName(svr, serverDocument, msg.author, true) + "** continues to spam in #" + msg.channel.name + " on " + msg.channel.guild.name, "Second-time spam violation in #" + msg.channel.name, serverDocument.config.moderation.filters.spam_filter.action, serverDocument.config.moderation.filters.spam_filter.violator_role_id);
+									bot.handleViolation(winston, svr, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You continued to spam in #" + msg.channel.name + " on " + msg.guild.name, "**@" + bot.getName(svr, serverDocument, msg.author, true) + "** continues to spam in #" + msg.channel.name + " on " + msg.guild.name, "Second-time spam violation in #" + msg.channel.name, serverDocument.config.moderation.filters.spam_filter.action, serverDocument.config.moderation.filters.spam_filter.violator_role_id);
 
 									// Clear spamDocument, restarting the spam filter process
 									spamDocument.remove();
@@ -240,34 +227,34 @@ module.exports = (bot, db, config, winston, msg) => {
 							if(translatedDocument) {
 								translate(msg.cleanContent, translatedDocument.source_language, "EN", (err, res) => {
 									if(err) {
-										winston.error("Failed to translate message '" + msg.cleanContent + "' from member '" + msg.author.username + "' on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, usrid: msg.author.id}, err);
+										winston.error("Failed to translate message '" + msg.cleanContent + "' from member '" + msg.author.username + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, usrid: msg.author.id}, err);
 									} else {
-										msg.channel.createMessage("**@" + bot.getName(msg.channel.guild, serverDocument, msg.member) + "** said:```" + res.translated_text + "```", {disable_everyone: true});
+										msg.channel.createMessage("**@" + bot.getName(msg.guild, serverDocument, msg.member) + "** said:```" + res.translated_text + "```", {disable_everyone: true});
 									}
 								});
 							}
-							
+
 							// Vote by mention
-							if(serverDocument.config.commands.points.isEnabled && msg.channel.guild.members.size>2 && msg.content.indexOf("<@")==0 && msg.content.indexOf(">")<msg.content.indexOf(" ") && msg.content.indexOf(" ")>-1 && msg.content.indexOf(" ")<msg.content.length-1) {
-							    var member = bot.memberSearch(msg.content.substring(0, msg.content.indexOf(" ")), msg.channel.guild);
+							if(serverDocument.config.commands.points.isEnabled && msg.guild.members.size>2 && msg.content.indexOf("<@")==0 && msg.content.indexOf(">")<msg.content.indexOf(" ") && msg.content.indexOf(" ")>-1 && msg.content.indexOf(" ")<msg.content.length-1) {
+							    var member = bot.memberSearch(msg.content.substring(0, msg.content.indexOf(" ")), msg.guild);
 							    var voteStr = msg.content.substring(msg.content.indexOf(" "));
 							    if(member && [bot.user.id, msg.author.id].indexOf(member.id)==-1 && !member.user.bot) {
 							        // Get target user data
 								    db.users.findOrCreate({_id: member.id}, (err, targetUserDocument) => {
 								       	if(!err && targetUserDocument) {
 								            var voteAction;
-								            
+
 								            // Check for +1 triggers
                                             for(var i=0; i<config.vote_triggers.length; i++) {
                                                 if(voteStr.indexOf(config.vote_triggers[i])==0) {
                                                     voteAction = "upvoted";
-                                                    
+
                                                     // Increment points
                                                     targetUserDocument.points++;
                                                     break;
                                                 }
                                             }
-                                            
+
                                             // Check for gild triggers
                                             if(voteStr.indexOf(" gild")==0 || voteStr.indexOf(" guild")==0) {
                                                 if(userDocument.points>10) {
@@ -275,11 +262,11 @@ module.exports = (bot, db, config, winston, msg) => {
                                                     userDocument.points -= 10;
                                                     targetUserDocument.points += 10;
                                                 } else {
-                                                    winston.warn("User '" + msg.author.username + "' does not have enough points to gild '" + member.user.username + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+                                                    winston.warn("User '" + msg.author.username + "' does not have enough points to gild '" + member.user.username + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
                                                     msg.channel.createMessage(msg.author.mention + " You don't have enough AwesomePoints to gild " + member);
                                                 }
                                             }
-                        
+
                                             // Log and save changes if necessary
                                             if(voteAction) {
                                                 if(voteAction=="gilded") {
@@ -292,10 +279,10 @@ module.exports = (bot, db, config, winston, msg) => {
                                                 targetUserDocument.save(err => {
                                                     if(err) {
                                                         winston.error("Failed to save user data for points", {usrid: member.id}, err);
-                                                    } 
+                                                    }
                                                 });
-                                                winston.info("User '" + member.user.username + "' " + voteAction + " by user '" + msg.author.username + " on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-                                            }	    
+                                                winston.info("User '" + member.user.username + "' " + voteAction + " by user '" + msg.author.username + " on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+                                            }
 								       	}
 								    });
 							    }
@@ -310,18 +297,18 @@ module.exports = (bot, db, config, winston, msg) => {
     									    // Get target user data
     									    db.users.findOrCreate({_id: messages[0].author.id}, (err, targetUserDocument) => {
     									       	if(!err && targetUserDocument) {
-    									       		winston.info("User '" + messages[0].author.username + "' upvoted by user '" + msg.author.username + " on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+    									       		winston.info("User '" + messages[0].author.username + "' upvoted by user '" + msg.author.username + " on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 
                                                     // Increment points
                                                     targetUserDocument.points++;
-                                                    
+
                                                     // Save changes to targetUserDocument
                                                     targetUserDocument.save(err => {
                                                     	if(err) {
                                                     		winston.error("Failed to save user data for points", {usrid: msg.author.id}, err);
                                                     	}
                                                     });
-    									       	} 
+    									       	}
     									    });
     									}
     								}).catch();
@@ -332,13 +319,13 @@ module.exports = (bot, db, config, winston, msg) => {
 							// Check if message mentions AFK user (server and global)
 							if(msg.mentions.length) {
 								msg.mentions.forEach(usr => {
-									var member = msg.channel.guild.members.get(usr.id);
+									var member = msg.guild.members.get(usr.id);
 									if([bot.user.id, msg.author.id].indexOf(usr.id)==-1 && !usr.bot) {
 									    // Server AFK message
 									    var targetUserDocument = serverDocument.members.id(usr.id);
 									    if(targetUserDocument && targetUserDocument.afk_message) {
 									        msg.channel.createMessage({
-									        	content: "**@" + bot.getName(msg.channel.guild, serverDocument, member) + "** is currently AFK: " + targetUserDocument.afk_message,
+									        	content: "**@" + bot.getName(msg.guild, serverDocument, member) + "** is currently AFK: " + targetUserDocument.afk_message,
 									        	disableEveryone: true
 									        });
 								        // Global AFK message
@@ -346,7 +333,7 @@ module.exports = (bot, db, config, winston, msg) => {
 											db.users.findOne({_id: usr.id}, (err, targetUserDocument) => {
 												if(!err && userDocument && userDocument.afk_message) {
 													msg.channel.createMessage({
-														content: "**@" + bot.getName(msg.channel.guild, serverDocument, member) + "** is currently AFK: " + userDocument.afk_message,
+														content: "**@" + bot.getName(msg.guild, serverDocument, member) + "** is currently AFK: " + userDocument.afk_message,
 														disableEveryone: true
 													});
 												}
@@ -361,7 +348,7 @@ module.exports = (bot, db, config, winston, msg) => {
     							// Check if message is a command, tag command, or extension trigger
     							var command = bot.checkCommandTag(msg.content, serverDocument);
 							    // Check if it's a first-party command and if it's allowed to run here
-    							if(command && commands.public[command.command] && serverDocument.config.commands[command.command].isEnabled && memberBotAdmin>=serverDocument.config.commands[command.command].admin_level && serverDocument.config.commands[command.command].disabled_channel_ids.indexOf(msg.channel.id)==-1) {
+    							if(command && serverDocument.config.commands[command.command].isEnabled && memberBotAdmin>=serverDocument.config.commands[command.command].admin_level && serverDocument.config.commands[command.command].disabled_channel_ids.indexOf(msg.channel.id)==-1) {
     								// Increment command usage count
     								incrementCommandUsage(serverDocument, command.command);
 
@@ -370,29 +357,33 @@ module.exports = (bot, db, config, winston, msg) => {
     									// Delete offending message if necessary
     									if(serverDocument.config.moderation.filters.nsfw_filter.delete_message) {
     										msg.delete().then().catch(err => {
-												winston.error("Failed to delete NSFW command message from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.channel.guild.name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+												winston.error("Failed to delete NSFW command message from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
     										});
     									}
 
     									// Handle this as a violation
-    									bot.handleViolation(winston, msg.channel.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You tried to fetch NSFW content in #" + msg.channel + " on " + msg.channel.guild.name, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** is trying to fetch NSFW content (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.channel.guild.name, "NSFW filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.nsfw_filter.action, serverDocument.config.moderation.filters.nsfw_filter.violator_role_id);
+    									bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You tried to fetch NSFW content in #" + msg.channel + " on " + msg.guild.name, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** is trying to fetch NSFW content (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.guild.name, "NSFW filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.nsfw_filter.action, serverDocument.config.moderation.filters.nsfw_filter.violator_role_id);
 									// Run the command
     								} else {
-	    								winston.info("Treating '" + msg.cleanContent + "' as a command", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+	    								winston.info("Treating '" + msg.cleanContent + "' as a command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 
 	    								deleteCommandMessage(serverDocument, channelDocument, msg);
 
 										try {
-											commandModules[command.command](bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, command.suffix, commands.public[command.command]);
+											bot.getPublicCommand(command.command)(bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, command.suffix, {
+												name: command.command,
+												usage: bot.getPublicCommandMetadata(command.command).usage,
+												description: bot.getPublicCommandMetadata(command.command).description
+											});
 										} catch(err) {
-											winston.error("Failed to process command '" + command.command + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+											winston.error("Failed to process command '" + command.command + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
 											msg.channel.createMessage("Something went wrong 😱");
 										}
 										setCooldown(serverDocument, channelDocument);
 									}
 								// Check if it's a trigger for a tag command
     							} else if(command && serverDocument.config.tags.list.id(command.command) && serverDocument.config.tags.list.id(command.command).isCommand) {
-    								winston.info("Treating '" + msg.cleanContent + "' as a tag command", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+    								winston.info("Treating '" + msg.cleanContent + "' as a tag command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
     								msg.channel.createMessage({
     									content: serverDocument.config.tags.list.id(command.command).content,
     									disableEveryone: true
@@ -405,38 +396,38 @@ module.exports = (bot, db, config, winston, msg) => {
 										if(memberBotAdmin>=serverDocument.extensions[i].admin_level && serverDocument.extensions[i].enabled_channel_ids.indexOf(msg.channel.id)>-1) {
 											// Command extensions
 											if(serverDocument.extensions[i].type=="command" && command && command.command==serverDocument.extensions[i].key) {
-												winston.info("Treating '" + msg.cleanContent + "' as a trigger for command extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+												winston.info("Treating '" + msg.cleanContent + "' as a trigger for command extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 												extensionApplied = true;
 
 												// Do the normal things for commands
 												incrementCommandUsage(serverDocument, command.command);
 			    								deleteCommandMessage(serverDocument, channelDocument, msg);
 												setCooldown(serverDocument, channelDocument);
-												
-												runExtension(bot, db, winston, msg.channel.guild, serverDocument, msg.channel, serverDocument.extensions[i], msg, command.suffix, null);
+
+												runExtension(bot, db, winston, msg.guild, serverDocument, msg.channel, serverDocument.extensions[i], msg, command.suffix, null);
 											// Keyword extensions
 											} else if(serverDocument.extensions[i].type=="keyword") {
 												var keywordMatch = msg.content.containsArray(serverDocument.extensions[i].keywords, serverDocument.extensions[i].case_sensitive);
 												if(((serverDocument.extensions[i].keywords.length>1 || serverDocument.extensions[i].keywords[0]!="*") && keywordMatch.selectedKeyword>-1) || (serverDocument.extensions[i].keywords.length==1 && serverDocument.extensions[i].keywords[0]=="*")) {
-													winston.info("Treating '" + msg.cleanContent + "' as a trigger for keyword extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-													runExtension(bot, db, winston, msg.channel.guild, serverDocument, msg.channel, serverDocument.extensions[i], msg, null, keywordMatch);
+													winston.info("Treating '" + msg.cleanContent + "' as a trigger for keyword extension '" + serverDocument.extensions[i].name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+													runExtension(bot, db, winston, msg.guild, serverDocument, msg.channel, serverDocument.extensions[i], msg, null, keywordMatch);
 												}
 											}
 										}
 									}
 
 									// Check if it's a chatterbot prompt
-									if(!extensionApplied && msg.content.indexOf(bot.user.mention)==0 || msg.content.indexOf("<@!" + bot.user.id + ">")==0 && msg.content.indexOf(" ")>-1 && msg.content.length>msg.content.indexOf(" ")) {
-										var prompt = msg.cleanContent.substring((msg.channel.guild.members.get(bot.user.id).nick || bot.user.username).length+2).trim();
+									if(!extensionApplied && serverDocument.config.chatterbot && msg.content.indexOf(bot.user.mention)==0 || msg.content.indexOf("<@!" + bot.user.id + ">")==0 && msg.content.indexOf(" ")>-1 && msg.content.length>msg.content.indexOf(" ")) {
+										var prompt = msg.cleanContent.substring((msg.guild.members.get(bot.user.id).nick || bot.user.username).length+2).trim();
 										setCooldown(serverDocument, channelDocument);
 
 										// Default help response
 										if(prompt.toLowerCase().indexOf("help")==0) {
-											msg.channel.createMessage("Use `" + bot.getCommandPrefix(msg.channel.guild, serverDocument) + "help` for info about how to use me on this server :smiley:");
+											msg.channel.createMessage("Use `" + bot.getCommandPrefix(msg.guild, serverDocument) + "help` for info about how to use me on this server :smiley:");
 										// Process chatterbot prompt
 										} else {
-											winston.info("Treating '" + msg.cleanContent + "' as a chatterbot prompt", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-											chatterbotPrompt(msg.author.id, prompt, msg.channel.guild.members.get(bot.user.id).nick || bot.user.username, res => {
+											winston.info("Treating '" + msg.cleanContent + "' as a chatterbot prompt", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+											chatterbotPrompt(msg.author.id, prompt, msg.guild.members.get(bot.user.id).nick || bot.user.username, res => {
 												msg.channel.createMessage({
 													content: msg.author.mention + " " + res,
 													disableEveryone: true
@@ -447,7 +438,7 @@ module.exports = (bot, db, config, winston, msg) => {
 									} else if(msg.mentions.find(usr => {
 										return usr.id==bot.user.id;
 									}) && serverDocument.config.tag_reaction.isEnabled) {
-										msg.channel.createMessage(serverDocument.config.tag_reaction.messages[getRandomInt(0, serverDocument.config.tag_reaction.messages.length-1)].replaceAll("@user", "**@" + bot.getName(msg.channel.guild, serverDocument, msg.member) + "**").replaceAll("@mention", msg.author.mention));
+										msg.channel.createMessage(serverDocument.config.tag_reaction.messages.random().replaceAll("@user", "**@" + bot.getName(msg.guild, serverDocument, msg.member) + "**").replaceAll("@mention", msg.author.mention));
 									}
 								}
 							}
@@ -456,11 +447,11 @@ module.exports = (bot, db, config, winston, msg) => {
 						// Save changes to serverDocument (recursive)
 						serverDocument.save(err => {
 							if(err) {
-								winston.error("Failed to save server data for message", {svrid: msg.channel.guild.id}, err);
+								winston.error("Failed to save server data for message", {svrid: msg.guild.id}, err);
 							}
 						});
 					} else {
-						winston.error("Failed to find server data for message", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+						winston.error("Failed to find server data for message", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
 					}
 				});
 			}
@@ -500,7 +491,7 @@ function setCooldown(serverDocument, channelDocument) {
 
 // Talk to Program-O for a chatterbot response
 function chatterbotPrompt(usrid, prompt, botname, callback) {
-	unirest.get("http://api.program-o.com/v2/chatbot/?bot_id=6&say=" + encodeURI(prompt.replace(/&/g, '')) + "&convo_id=" + usrid + "&format=json").headers({
+	unirest.get("http://api.program-o.com/v2/chatbot/?bot_id=6&say=" + encodeURIComponent(prompt) + "&convo_id=" + usrid + "&format=json").headers({
         "Accept": "application/json",
         "User-Agent": "Unirest Node.js"
     }).end(res => {
@@ -544,8 +535,3 @@ String.prototype.containsArray = (arr, isCaseSensitive) => {
 		keywordIndex: keywordIndex
 	};
 };
-
-// Get a random integer in specified range, inclusive
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}

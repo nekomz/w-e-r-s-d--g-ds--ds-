@@ -71,40 +71,6 @@ module.exports = class Bot {
         		callback(userDocument ? userDocument.toObject() : null);
         	});
         };
-        this.setUserData = (member, key, value, callback) => {
-        	if(!member.user.bot) {
-	        	db.users.findOrCreate({_id: member.id}, (err, userDocument) => {
-	        		if(!err && userDocument) {
-		        		if(!userDocument.profile_fields) {
-							userDocument.profile_fields = {};
-						}
-	        			userDocument.profile_fields[key] = value;
-	        			userDocument.save(err => {
-	    					callback(err, userDocument);
-	        			});
-	        		} else {
-	        			callback(err);
-	        		}
-	        	});
-        	}
-        };
-        this.deleteUserData = (member, key, callback) => {
-        	if(!member.user.bot) {
-	        	db.users.findOrCreate({_id: member.id}, (err, userDocument) => {
-	        		if(!err && userDocument) {
-		        		if(!userDocument.profile_fields) {
-							userDocument.profile_fields = {};
-						}
-	        			delete userDocument.profile_fields[key];
-	        			userDocument.save(err => {
-	    					callback(err, userDocument);
-	        			});
-	        		} else {
-	        			callback(err);
-	        		}
-	        	});
-	        }
-    	};
     	this.handleViolation = (ch, member, userMessage, adminMessage, strikeMessage, action, roleid) => {
     		if(!member.user.bot) {
     			db.users.findOrCreate({_id: member.id}, (err, userDocument) => {

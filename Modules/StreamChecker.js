@@ -3,7 +3,7 @@ const unirest = require("unirest");
 
 // Checks if a user is streaming on Twitch, YouTube Gaming, or HitBox and posts message in server channel if necessary
 module.exports = (winston, svr, streamerDocument, callback) => {
-	isStreaming(streamerDocument.type, streamerDocument._id, function(data) {
+	isStreaming(streamerDocument.type, streamerDocument._id, data => {
 		var updated = false;
 
 		// Send status message if stream started
@@ -35,7 +35,7 @@ module.exports = (winston, svr, streamerDocument, callback) => {
 };
 
 function isStreaming(type, username, callback) {
-	username = encodeURI(username.replaceAll("&", ""));
+	username = encodeURIComponent(username);
 	switch(type) {
 		case "twitch":
 			isStreamingTwitch(username, callback);

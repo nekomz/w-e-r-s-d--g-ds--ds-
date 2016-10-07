@@ -8,7 +8,6 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
             if(i>=apps.length) {
                 callback();
             } else {
-                apps[i] = apps[i].trim();
                 itunes({
                     entity: "software",
                     country: "US",
@@ -16,10 +15,10 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
                     limit: 1
                 }, (err, data) => {
                     if(err) {
-                        winston.warn("Apple app '" + apps[i] + "' not found to link", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id})
+                        winston.warn("Apple app '" + apps[i] + "' not found to link", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id})
                         results.push("❌ No results found for `" + apps[i] + "`");
                     } else {
-                        results.push("**" + data.results[0].trackCensoredName + "** by " + data.results[0].artistName + ", " + data.results[0].formattedPrice + " and rated " + data.results[0].averageUserRating + " stars: " + data.results[0].trackViewUrl + "\n");
+                        results.push("**" + data.results[0].trackCensoredName + "** by " + data.results[0].artistName + ", " + data.results[0].formattedPrice + " and rated " + data.results[0].averageUserRating + " stars: <" + data.results[0].trackViewUrl + ">");
                     }
                     fetchApp(++i, callback);
                 });
@@ -40,6 +39,7 @@ function getAppList(suffix) {
         if(!apps[i] || apps.indexOf(apps[i])!=i) {
             apps.splice(i, 1);
         } else {
+            apps[i] = apps[i].trim();
             i++;
         }
     }

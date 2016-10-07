@@ -1,0 +1,118 @@
+<script type="text/javascript">
+function hideDonate() {
+    var prompt = confirm("Are you sure? You won't ever see the donate button again :(");
+    if(prompt) {
+        localStorage.setItem("donate", "hide");
+        $("html").removeClass("is-clipped");
+        $("#donate-modal").removeClass("is-active");
+        $("#nav-donate").toggle(186);
+    }
+}
+$(document).ready(function() {
+    if(localStorage.getItem("donate")=="hide") {
+        $("#nav-donate").toggle(186);
+    }
+});
+</script>
+
+<div id="donate-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-container">
+        <div class="modal-content">
+            <div class="box">
+                <h2 class="title is-2">
+                    <strong>Thank you</strong> for your support!
+                </h2>
+                <h5 class="subtitle is-5">
+                    The AwesomeBot team doesn't accept donations (<a href="/wiki/FAQs#donations">here's why</a>). Instead, we'd prefer that you donate to one or more of the following charities:
+                </h5>
+                <a class="media" href="https://donate.charitywater.org/dual/general_for_split/monthly_for_split">
+                    <div class="media-left">
+                        <img class="image is-32x32" src="http://www.charitywater.org/_site/images/jerrycan.png">
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-3">charity: water</p>
+                    </div>
+                    <div class="media-right">
+                        <span class="icon is-medium">
+                            <i class="fa fa-chevron-right"></i>
+                        </span>
+                    </div>
+                </a>
+                <a class="media" href="https://donate.doctorswithoutborders.org/onetime.cfm">
+                    <div class="media-left">
+                        <img class="image is-32x32" src="https://maxcdn.icons8.com/Color/PNG/512/Healthcare/doctors_without_borders-512.png">
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-3">Doctors Without Borders</p>
+                    </div>
+                    <div class="media-right">
+                        <span class="icon is-medium">
+                            <i class="fa fa-chevron-right"></i>
+                        </span>
+                    </div>
+                </a>
+                <a class="media" href="https://secure2.wish.org/site/SPageServer?pagename=donate_now">
+                    <div class="media-left">
+                        <img class="image is-32x32" src="https://media.glassdoor.com/sqll/15278/make-a-wish-foundation-squarelogo.png">
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-3">Make-A-Wish Foundation <span class="tag is-dark">USA</span></p>
+                    </div>
+                    <div class="media-right">
+                        <span class="icon is-medium">
+                            <i class="fa fa-chevron-right"></i>
+                        </span>
+                    </div>
+                </a>
+                <a class="media" href="https://www.cff.org/">
+                    <div class="media-left">
+                        <img class="image is-32x32" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/CFF_Logo_New.svg/250px-CFF_Logo_New.svg.png">
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-3">Cystic Fibrosis Foundation <span class="tag is-dark">USA</span></p>
+                    </div>
+                    <div class="media-right">
+                        <span class="icon is-medium">
+                            <i class="fa fa-chevron-right"></i>
+                        </span>
+                    </div>
+                </a>
+                <a class="media" href="https://raysofsunshine.org.uk/donate/">
+                    <div class="media-left">
+                        <img class="image is-32x32" src="https://pbs.twimg.com/profile_images/1562575749/ROS_sun_RGB_yellowface_400x400.jpg">
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-3">Rays of Sunshine <span class="tag is-dark">UK</span></p>
+                    </div>
+                    <div class="media-right">
+                        <span class="icon is-medium">
+                            <i class="fa fa-chevron-right"></i>
+                        </span>
+                    </div>
+                </a>
+                <a class="media" href="https://uk.theodora.org/en-gb/action/fundraise-us">
+                    <div class="media-left">
+                        <img class="image is-32x32" src="http://www.globaladventurechallenges.com/wp-content/uploads/Theodora-Childrens-Charity.jpg">
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-3">Theodora Children's Charity <span class="tag is-dark">UK</span></p>
+                    </div>
+                    <div class="media-right">
+                        <span class="icon is-medium">
+                            <i class="fa fa-chevron-right"></i>
+                        </span>
+                    </div>
+                </a>
+                <br>
+                <a class="button is-small is-danger is-outlined" onclick="hideDonate();">
+                    <span>Hide the donate button forever</span>
+                    <span class="icon is-small">
+                        <i class="fa fa-frown-o"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+    </div>
+    <button class="modal-close"></button>
+</div>

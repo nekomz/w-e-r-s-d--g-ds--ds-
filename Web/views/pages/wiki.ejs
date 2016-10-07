@@ -7,7 +7,7 @@
 	<script>
 	function searchWiki(query) {
 		if(query) {
-			window.location.href = "/wiki?q=" + encodeURI(query);
+			window.location.href = "/wiki?q=" + encodeURIComponent(query);
 		} else {
 			window.location.href = "/wiki?page=Home";
 		}
@@ -36,6 +36,7 @@
 	</script>
 </head>
 <body>
+	<% include ../partials/donate %>
 	<section id="header" class="hero is-primary is-small is-bold" style="background: url('/header-image');background-size: cover;">
 		<div class="hero-head">
 			<% include ../partials/header %>
@@ -62,7 +63,7 @@
 			<div class="columns">
 				<div id="menu" class="column is-one-quarter">
 					<p class="control has-addons has-addons-centered">
-						<input id="search-input" class="input is-expanded" type="text" placeholder="I'm looking for..." onkeydown="if(event.keyCode==13) {searchWiki(this.value);}" value="<%= searchQuery %>">
+						<input id="search-input" class="input is-expanded" type="text" placeholder="I'm looking for..." onkeydown="if(event.keyCode==13) {searchWiki(this.value);}" value="<%= activeSearchQuery %>">
 						<a id="search-button" class="button" href="javascript:searchWiki(document.getElementById('search-input').value);">
 							<span class="icon is-small">
 								<i class="fa fa-search"></i>
@@ -79,16 +80,18 @@
 							<% for(var i=0; i<pageList.length; i++) { %>
 								<li>
 									<% var pageName = pageList[i].substring(0, pageList[i].indexOf(".")); %>
-									<a id="menu-<%= pageName.toLowerCase() %>" class="<%= pageName==pageTitle ? 'is-active' : '' %>" href="/wiki?page=<%= pageName %>">
+									<a id="menu-<%= pageName.toLowerCase() %>" class="<%= pageName==pageTitle ? 'is-active' : '' %>" href="/wiki/<%= pageName %>">
 										<%= pageName %>
 									</a>
 								</li>
 							<% } %>
 						</ul>
-						<p class="menu-label">
-							Sections
-						</p>
-						<ul id="submenu" class="menu-list"></ul>
+						<% if(!searchResults && pageContent) { %>
+							<p class="menu-label">
+								Sections
+							</p>
+							<ul id="submenu" class="menu-list"></ul>
+						<% } %>
 					</aside>
 					<br>
 					<a class="button is-light is-fullwidth" href="https://github.com/BitQuote/AwesomeBot/wiki">
@@ -102,11 +105,15 @@
 					<h1 id="page-title" class="title">
 						<%= pageTitle %>
 					</h1>
-					<div id="frame" class="content">
+					<div id="frame" class="<%= (!searchResults && pageContent) ? 'content' : '' %>">
 						<% if(searchResults) { %>
 							<% include ../partials/wiki-search-results %>
 						<% } else { %>
-							<%- pageContent %>
+							<% if(pageContent) { %>
+								<%- pageContent %>
+							<% } else { %>
+								<% include ../partials/no-results %>
+							<% } %>
 						<% } %>
 					</div>
 				</div>
@@ -114,12 +121,13 @@
 		</div>
 	</section>
 
-	<% if(!searchResults) { %>
+	<% if(!searchResults && pageContent) { %>
 		<script>
 		populateSectionsMenu();
 		</script>
 	<% } %>
 
 	<% include ../partials/footer %>
+	<% include ../partials/scroll-top-button %>
 </body>
 </html>

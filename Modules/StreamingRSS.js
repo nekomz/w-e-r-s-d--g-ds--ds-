@@ -1,5 +1,5 @@
 const getRSS = require("./../Modules/RSS.js");
-const prettyDate = require("./../Modules/PrettyDate.js");
+const moment = require("moment");
 
 // Send streaming RSS updates for a server
 module.exports = (bot, winston, svr, feedDocument, callback) => {
@@ -13,7 +13,7 @@ module.exports = (bot, winston, svr, feedDocument, callback) => {
                         if(articles[i].link==feedDocument.streaming.last_article_title) {
                             adding = true;
                         } else if(adding) {
-                            info.push((articles[i].published instanceof Date ? ("`" + prettyDate(articles[i].published) + "`") : "") + " **"  + articles[i].title + "**\n" + articles[i].link + "\n");
+                            info.push((articles[i].published instanceof Date ? ("`" + moment(articles[i].published).fromNow() + "`") : "") + " **"  + articles[i].title + "**\n" + articles[i].link + "\n");
                         }
                     }
                 };

@@ -21,7 +21,7 @@ module.exports = (bot, db, config, winston, userDocument, msg, suffix) => {
         	// Get server data
 			db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 				if(!err && member && serverDocument && serverDocument.config.blocked.indexOf(msg.author.id)==-1) {
-					if(bot.getUserBotAdmin(svr, serverDocument, member)==3) {
+					if(bot.getUserBotAdmin(svr, serverDocument, member)>=3) {
 						msg.channel.createMessage("🌎 " + config.hosting_url + "dashboard/overview?svrid=" + svr.id);
 					} else {
 						msg.channel.createMessage("You are not an admin for that server.");

@@ -5,14 +5,12 @@ const auth = require("./../../Configuration/auth.json");
 const getGIF = require("./../GiphySearch.js");
 const giSearch = require("./../GoogleImageSearch.js");
 const getRSS = require("./../RSS.js");
-const prettyDate = require("./../PrettyDate.js");
-const secondsToString = require("./../PrettySeconds.js");
-const parseTime = require("./../TimeParser.js");
 
 const util = require("util");
 const unirest = require("unirest");
 const xmlparser = require("xml-parser");
 const imgur = require("imgur-node-api");
+const moment = require("moment");
 imgur.setClientID(auth.tokens.imgur_client_id);
 
 // Base set of extensionDocument parameters
@@ -52,9 +50,7 @@ module.exports = (bot, db, winston, extensionDocument, svr, serverDocument, ch, 
             getRSS(winston, url, num, callback);
         },
         bot: new Bot(bot, db, winston, svr, serverDocument),
-        parseTime: parseTime,
-        prettyDate: prettyDate,
-        secondsToString: secondsToString,
+        moment: moment,
         setTimeout: setTimeout,
         JSON: JSON,
         Math: Math,
@@ -66,7 +62,9 @@ module.exports = (bot, db, winston, extensionDocument, svr, serverDocument, ch, 
         Number: Number,
         Object: Object,
         encodeURI: encodeURI,
+        encodeURIComponent: encodeURIComponent,
         decodeURI: decodeURI,
+        decodeURIComponent: decodeURIComponent,
         parseInt: parseInt,
         parseFloat: parseFloat,
         util: util,
@@ -83,11 +81,11 @@ module.exports = (bot, db, winston, extensionDocument, svr, serverDocument, ch, 
 
     if(msg && ["keyword", "command"].indexOf(extensionDocument.type)>-1) {
         params.msg = msg;
-        params.svr = msg.channel.guild;
-        params.ch = msg.channel;
+        params.guild = msg.guild;
+        params.channel = msg.channel;
     } else {
-        params.svr = svr;
-        params.ch = ch;
+        params.guild = svr;
+        params.channel = ch;
     }
     if(extensionDocument.type=="keyword" && keywordMatch) {
         params.keywordMatch = keywordMatch;

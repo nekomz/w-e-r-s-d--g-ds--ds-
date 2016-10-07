@@ -1,8 +1,8 @@
 const unirest = require("unirest");
 
-module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix) => {
-    if(suffix) {
-        var query = suffix.substring(0, suffix.lastIndexOf(" "));
+module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix, commandData) => {
+	if(suffix) {
+		var query = suffix.substring(0, suffix.lastIndexOf(" "));
         var num = suffix.substring(suffix.lastIndexOf(" ")+1);
 
         if(!query || isNaN(num)) {
@@ -15,42 +15,78 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
             num = parseInt(num);
         }
 
-        unirest.get("http://hummingbird.me/api/v1/search/anime?query=" + query.replaceAll("&", "")).header("Accept", "application/json").end(res => {
-            if(res.status==200 && res.body.length>0) {
-                var results = [];
-                for(var i=0; i<num; i++) {
-                    if(i>=res.body.length) {
-                        break;
-                    }
-                    var info = "__**" + res.body[i].title + "**__```" + res.body[i].synopsis + "```**Status:** " + res.body[i].status + "\n**Episodes:** " + res.body[i].episode_num + "\n**Length:** " + res.body[i].episode_length + " minutes" + (res.body[i].age_rating ? ("\n**Age Rating:** " + res.body[i].age_rating) : "") + "\n**Type:** " + res.body[i].show_type + "\n**Rating:** " + (Math.round(res.body[i].community_rating * 10)/10) + "\n**Genres:**";
-                    for(var j=0; j<res.body[i].genres.length; j++) {
-                        info += "\n\t" + res.body[i].genres[j].name;
-                    }
-                    info += (res.body[i].started_airing ? ("\n**Started Airing:** " + res.body[i].started_airing) : "") + (res.body[i].finished_airing ? ("\n**Finished Airing:** " + res.body[i].finished_airing) : "") + "\n" + res.body[i].url;
-                    results.push(info);
-                }
-                if(results.length>1) {
-                    var info = "Select one of the following:\n";
-                    for(var i=0; i<results.length; i++) {
-                        info += "\t" + i + ") " + results[i].substring(4, results[i].indexOf("**", 5)) + "\n";
-                    }
-                    msg.channel.createMessage(info);
-                    bot.awaitMessage(msg.channel.id, msg.author.id, message => {
-                        message.content = message.content.trim();
-                        return message.content && !isNaN(message.content) && message.content>=0 && message.content<results.length;
-                    }, message => {
-                        msg.channel.createMessage(results[parseInt(message.content)]);
-                    });
-                } else {
-                    bot.createMessage(results[0]);
-                }
-            } else {
-                winston.warn("No anime found for '" + query + "'", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-                msg.channel.createMessage("No anime found (˃̥̥ω˂̥̥̥)");
-            }
-        });
-    } else {
-        winston.warn("Anime query not provided", {svrid: msg.channel.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-        msg.channel.createMessage(msg.author.mention + " You gotta give me somethin' to search for!")
-    }
+		let api_url = "http://hummingbird.me/api/v1/search/anime?query=" + encodeURIComponent(query);
+		unirest.get(api_url).header("Accept", "application/json").end(response => {
+			if(response.status==200 && response.body.length) {
+				let results = [];
+				let list = [];
+
+				for(var i=0; i<num; i++) {
+					let entry = response.body[i];
+					results.push(getDisplay(entry));
+					list.push(i + ") " + entry.title);
+				}
+
+				if(list.length==1) {
+					msg.channel.createMessage(results[0]);
+				} else {
+					msg.channel.createMessage("Select one of the following:\n\t" + list.join("\n\t"));
+					bot.awaitMessage(msg.channel.id, msg.author.id, message => {
+						message.content = message.content.trim();
+						return message.content && !isNaN(message.content) && message.content>=0 && message.content<results.length;
+					}, message => {
+						msg.channel.createMessage(results[+message.content]);
+					});
+				}
+			} else {
+				winston.warn("No anime found for '" + query + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+				msg.channel.createMessage("No anime found (˃̥̥ω˂̥̥̥)");
+			}
+		});
+	} else {
+		winston.warn("Parameters not provided for `" + commandData.name + "` command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+		msg.channel.createMessage(msg.author.mention + " You gotta give me somethin' to search for!");
+	}
 };
+
+function getDisplay(data) {
+	// Title + airing time
+	let airing = data.started_airing;
+	if(data.show_type=="TV") {
+		airing += " — " + (data.finished_airing || "*ongoing*");
+	}
+
+	let info = [];
+	info.push("__**" + data.title + "**__ (" + airing + ")");
+
+	// Link
+	info.push(data.url);
+
+	// Status line
+	if(data.community_rating) {
+		info.push("**Rating:** " + data.community_rating.toFixed(2) + "/5");
+	}
+	if(data.age_rating) {
+		info.push("**Rated:** " + data.age_rating);
+	}
+
+	if(!data.episode_count) {
+		data.episode_count = "N/A";
+	}
+	if(data.episode_length) {
+		info.push("**Episodes:** " + data.episode_count + " @ " + data.episode_length + " mins");
+	} else {
+		info.push("**Episodes:** " + data.episode_count);
+	}
+
+	// Genres
+	let genres = data.genres.map(genre => genre.name);
+	if(genres.length) {
+		info.push("**Genre:** " + genres.join(", "));
+	}
+
+	info.push("");
+	info.push(data.synopsis);
+
+	return info.join("\n");
+}

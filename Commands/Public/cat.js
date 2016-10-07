@@ -1,6 +1,5 @@
 const unirest = require("unirest");
 
-// Produces random image of cats
 module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg) => {
 	unirest.get("http://random.cat/meow").end(res => {
 		var image = "http://i.imgur.com/Bai6JTL.jpg";

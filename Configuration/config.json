@@ -10,12 +10,13 @@
     "game": "default",
     "status": "online",
     "max_voice_channels": 2,
-    "header_image": "header-bg.jpg",
+    "header_image": "",
     "homepage_message_html": "",
     "pm_forward": false,
-    "version": "4.0-Preview-3.2",
+    "version": "4.0-Preview-3.3",
     "oauth_link": "",
     "discord_link": "",
+    "moment_date_format": "ddd MMMM Do YYYY [at] H:mm:ss",
     "vote_triggers": [
         " +!",
         " +1",
@@ -26,5 +27,20 @@
         " thanks",
         " thank you",
         " god bless"
+    ],
+    "yes_strings": [
+        "k",
+        "y",
+        "yy",
+        "ye",
+        "ok",
+        "kk",
+        "yes",
+        "yea",
+        "yee",
+        "yeah",
+        "okay",
+        "fine",
+        "sure"
     ]
 }
