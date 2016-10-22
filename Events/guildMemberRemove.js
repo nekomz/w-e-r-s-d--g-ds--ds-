@@ -4,9 +4,11 @@ module.exports = (bot, db, config, winston, svr, member) => {
 	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(!err && serverDocument) {
 			// Remove member translated messages
-			var memberTranslatedMessages = serverDocument.config.translated_messages.id(member.id);
-			if(memberTranslatedMessages) {
-				memberTranslatedMessages.remove();
+			if(serverDocument.config.translated_messages) { 
+				var memberTranslatedMessages = serverDocument.config.translated_messages.id(member.id);
+				if(memberTranslatedMessages) {
+					memberTranslatedMessages.remove();
+				}
 			}
 
 			// Remove member data in channels (input and filters)
@@ -32,21 +34,7 @@ module.exports = (bot, db, config, winston, svr, member) => {
 					if(ch) {
 						var channelDocument = serverDocument.channels.id(ch.id);
 						if(!channelDocument || channelDocument.bot_enabled) {
-							var toSend = serverDocument.config.moderation.status_messages.member_removed_message.messages.random().replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**");
-							var kickDocument = serverDocument.member_kicked_data.id(member.id);
-							if(kickDocument) {
-								var creator = svr.members.get(kickDocument.creator_id);
-								if(creator) {
-									toSend += "\n\nKicked by **@" + bot.getName(creator, svr) + "**" + (kickDocument.reason ? (", reason: " + kickDocument.reason) : "");
-								}
-								kickDocument.remove();
-								kickDocument.save(err => {
-									if(err) {
-										winston.error("Failed to save kicked members data", {svrid: svr.id}, err);
-									}
-								});
-							}
-							ch.createMessage(toSend);
+							ch.createMessage(serverDocument.config.moderation.status_messages.member_removed_message.messages.random().replaceAll("@user", "**@" + bot.getName(svr, serverDocument, member) + "**"));
 						}
 					}
 				}

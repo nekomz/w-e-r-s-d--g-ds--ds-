@@ -1,6 +1,8 @@
 const commands = require("./../Configuration/commands.json");
+const computeRankScore = require("./../Modules/RankScoreCalculator.js");
 const removeMd = require("remove-markdown");
 const reload = require("require-reload")(require);
+const ModLog = require("./../Modules/ModerationLogging.js");
 
 var privateCommandModules = {};
 var commandModules = {};
@@ -18,6 +20,7 @@ module.exports = (db, auth, config) => {
 		maxShards: config.shard_count || 1,
 		messageLimit: 50
 	});
+	bot.isReady = false;
 
 	// Sequentially send an array
 	bot.sendArray = (ch, arr, i, options, callback) => {
@@ -109,30 +112,22 @@ module.exports = (db, auth, config) => {
 
 	// bot command handler
 	bot.reloadPrivateCommand = command => {
-		let success = false;
 		try {
 			privateCommandModules[command] = reload("./../Commands/PM/" + command + ".js");
-			success = true;
+			return;
 		}
 		catch (err) {
-			success = false;
-		}
-		finally {
-			return success;
+			return err;
 		}
 	};
 
 	bot.reloadPublicCommand = command => {
-		let success = false;
 		try {
 			commandModules[command] = reload("./../Commands/Public/" + command + ".js");
-			success = true;
+			return;
 		}
 		catch (err) {
-			success = false;
-		}
-		finally {
-			return success;
+			return err;
 		}
 	};
 
@@ -255,6 +250,42 @@ module.exports = (db, auth, config) => {
         return;
 	};
 
+	// Finds a channel (by name or ID) in a server
+	bot.channelSearch = (str, svr) => {
+		str = str.toLowerCase().replaceAll(" ", "-");
+		if(str.startsWith("#") && str.length>1) {
+			str = str.slice(1);
+		} else if(str.startsWith("<#")) {
+			str = str.slice(2).slice(0, -1);
+		}
+		var ch = svr.channels.get(str);
+		if(!ch) {
+			ch = svr.channels.find(channel => {
+				return channel.name==str;
+			});
+		}
+		return ch;
+	};
+
+	// Finds a member (by name or ID) in a server
+	bot.roleSearch = (str, svr) => {
+		if(str.startsWith("<@&")) {
+			str = str.slice(3).slice(0, -1);
+		}
+		var role = svr.roles.get(str);
+		if(!role) {
+			role = svr.roles.find(r => {
+				return r.name==str;
+			});
+			if(!role) {
+				role = svr.roles.find(r => {
+					return r.name.toLowerCase()==str.toLowerCase();
+				});
+			}
+		}
+		return role;
+	};
+
 	// Gets a sample member object for a user to use for status info (since status is per-shard)
 	bot.getFirstMember = usr => {
 		return bot.guilds.find(svr => {
@@ -275,7 +306,7 @@ module.exports = (db, auth, config) => {
 	// Check if a user has leveled up a rank
 	bot.checkRank = (winston, svr, serverDocument, member, memberDocument, override) => {
 		if(member && member.id!=bot.user.id && !member.user.bot && svr) {
-	        var currentRankscore = memberDocument.rank_score + (override ? 0 : Math.ceil((memberDocument.messages + memberDocument.voice) / 10));
+	        var currentRankscore = memberDocument.rank_score + (override ? 0 : computeRankScore(memberDocument.messages, memberDocument.voice));
 	        for(var i=0; i<serverDocument.config.ranks_list.length; i++) {
 	            if(currentRankscore<=serverDocument.config.ranks_list[i].max_score || i==serverDocument.config.ranks_list.length-1) {
 	                if(memberDocument.rank!=serverDocument.config.ranks_list[i]._id && !override) {
@@ -288,12 +319,12 @@ module.exports = (db, auth, config) => {
 	                            	if(ch) {
 	                            		var channelDocument = serverDocument.channels.id(ch.id);
 										if(!channelDocument || channelDocument.bot_enabled) {
-											ch.createMessage("Congratulations " + member.mention + ", you've leveled up to **" + memberDocument.rank + "** :trophy:");
+											ch.createMessage("Congratulations " + member.mention + ", you've leveled up to **" + memberDocument.rank + "** 🏆");
 										}
 	                            	}
 	                            } else if(serverDocument.config.moderation.status_messages.member_rank_updated_message.type=="pm") {
 	                                member.user.getDMChannel().then(ch => {
-										ch.createMessage("Congratulations, you've leveled up to **" + memberDocument.rank + "** on " + svr.name + " :trophy:"
+										ch.createMessage("Congratulations, you've leveled up to **" + memberDocument.rank + "** on " + svr.name + " 🏆"
 											);
 									});
 	                            }
@@ -342,7 +373,9 @@ module.exports = (db, auth, config) => {
 		if(serverDocument.config.commands.points.isEnabled) {
 			userDocument.points -= 50;
 			userDocument.save(err => {
-				winston.error("Failed to save user data for points", {usrid: member.id}, err);
+				if(err) {
+					winston.error("Failed to save user data for points", {usrid: member.id}, err);
+				}
 			});
 		}
 
@@ -368,22 +401,19 @@ module.exports = (db, auth, config) => {
 		// Perform action, message admins, and message user
 		switch(action) {
 			case "block":
-				if(serverDocument.config.blocked.indexOf(member.id)==-1) {
-					serverDocument.config.blocked.push(member.id);
-				}
-				member.user.getDMChannel().then(ch => {
-					ch.createMessage(userMessage + ", so I blocked you from using me on the server. Contact a moderator to resolve this.");
-				});
-				bot.messageBotAdmins(svr, serverDocument, adminMessage + ", so I blocked them from using me on the server.");
+				blockMember();
 				break;
 			case "mute":
-				bot.muteMember(ch, member).then(() => {
-					member.user.getDMChannel().then(ch => {
-						ch.createMessage(userMessage + ", so I muted you in the channel. Contact a moderator to resolve this.");
-					});
-					bot.messageBotAdmins(svr, serverDocument, adminMessage + ", so I muted them in the channel.");
-				}).catch(err => {
-					bot.handleViolation(winston, svr, serverDocument, ch, member, userDocument, memberDocument, userMessage, adminMessage, strikeMessage, "block", roleid);
+				bot.muteMember(ch, member).then(err => {
+					if(err) {
+						blockMember();
+					} else {
+						member.user.getDMChannel().then(ch => {
+							ch.createMessage(userMessage + ", so I muted you in the channel. Contact a moderator to resolve this.");
+						});
+						bot.messageBotAdmins(svr, serverDocument, adminMessage + ", so I muted them in the channel.");
+						ModLog.create(svr, serverDocument, "Mute", member, null, strikeMessage);
+					}
 				});
 				break;
 			case "kick":
@@ -392,9 +422,8 @@ module.exports = (db, auth, config) => {
 						ch.createMessage(userMessage + ", so I kicked you from the server. Goodbye.");
 					});
 					bot.messageBotAdmins(svr, serverDocument, adminMessage + ", so I kicked them from the server.");
-				}).catch(err => {
-					bot.handleViolation(winston, svr, serverDocument, ch, member, userDocument, memberDocument, userMessage, adminMessage, strikeMessage, "block", roleid);
-				});
+					ModLog.create(svr, serverDocument, "Kick", member, null, strikeMessage);
+				}).catch(blockMember);
 				break;
 			case "ban":
 				member.ban().then(() => {
@@ -402,9 +431,8 @@ module.exports = (db, auth, config) => {
 						ch.createMessage(userMessage + ", so I banned you from the server. Goodbye.");
 					});
 					bot.messageBotAdmins(svr, serverDocument, adminMessage + ", so I banned them from the server.");
-				}).catch(err => {
-					bot.handleViolation(winston, svr, serverDocument, ch, member, userDocument, memberDocument, userMessage, adminMessage, strikeMessage, "block", roleid);
-				});
+					ModLog.create(svr, serverDocument, "Ban", member, null, strikeMessage);
+				}).catch(blockMember);
 				break;
 			case "none":
 			default:
@@ -412,11 +440,35 @@ module.exports = (db, auth, config) => {
 					ch.createMessage(userMessage + ", and the chat moderators have again been notified about this.");
 				});
 				bot.messageBotAdmins(svr, serverDocument, adminMessage + ", but I didn't do anything about it.");
+				ModLog.create(svr, serverDocument, "Warning", member, null, strikeMessage);
+				break;
 		}
+
+		// Block member
+		function blockMember() {
+			if(serverDocument.config.blocked.indexOf(member.id)==-1) {
+				serverDocument.config.blocked.push(member.id);
+			}
+			member.user.getDMChannel().then(ch => {
+				ch.createMessage(userMessage + ", so I blocked you from using me on the server. Contact a moderator to resolve this.");
+			});
+			bot.messageBotAdmins(svr, serverDocument, adminMessage + ", so I blocked them from using me on the server.");
+			ModLog.create(svr, serverDocument, "Block", member, null, strikeMessage);
+		}
+
+		// Save serverDocument
+		serverDocument.save(err => {
+			if(err) {
+				winston.error("Failed to save server data for violation", {svrid: svr.id, chid: ch.id, usrid: member.id}, err);
+			}
+		});
 	};
 
 	// Check if user has a bot admin role on a server
 	bot.getUserBotAdmin = (svr, serverDocument, member) => {
+		if(!svr || !serverDocument || !member) {
+			return -1;
+		}
 		if(config.maintainers.indexOf(member.id)>-1) {
 			return 4;
 		}
@@ -449,7 +501,7 @@ module.exports = (db, auth, config) => {
 
 	// Check if a user is muted on a server
 	bot.isMuted = (ch, member) => {
-		return !ch.permissionsOf(member.id).has("sendMessages");
+		return !ch.permissionsOf(member.id).has("sendMessages") || (ch.permissionOverwrites.has(member.id) && !ch.permissionOverwrites.get(member.id).has("sendMessages"));
 	};
 
 	// Mute a member of a server in a channel

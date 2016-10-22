@@ -23,8 +23,10 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
 
 				for(var i=0; i<num; i++) {
 					let entry = response.body[i];
-					results.push(getDisplay(entry));
-					list.push(i + ") " + entry.title);
+					if(entry) {
+						results.push(getDisplay(entry));
+						list.push(i + ") " + entry.title);
+					}
 				}
 
 				if(list.length==1) {
@@ -44,7 +46,7 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
 			}
 		});
 	} else {
-		winston.warn("Parameters not provided for `" + commandData.name + "` command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+		winston.warn("Parameters not provided for '" + commandData.name + "' command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 		msg.channel.createMessage(msg.author.mention + " You gotta give me somethin' to search for!");
 	}
 };

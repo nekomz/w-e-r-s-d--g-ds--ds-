@@ -1,7 +1,9 @@
 const express = require("express");
+const compression = require("compression");
 const sio = require("socket.io");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
+const RateLimit = require("express-rate-limit");
 const ejs = require("ejs");
 const session = require("express-session");
 const mongooseSessionStore = require("connect-mongo")(session);
@@ -18,15 +20,27 @@ md.setOption("tables", true);
 const removeMd = require("remove-markdown");
 const base64 = require("node-base64-image");
 const sizeof = require("object-sizeof");
+const moment = require("moment");
 
-const commands = require("./../Configuration/commands.json");
 const database = require("./../Database/Driver.js");
-const prettyDate = require("./../Modules/PrettyDate.js");
-const secondsToString = require("./../Modules/PrettySeconds.js");
+const createMessageOfTheDay = require("./../Modules/MessageOfTheDay.js");
+const Giveaways = require("./../Modules/Giveaways.js");
+const Lotteries = require("./../Modules/Lotteries.js");
+const Polls = require("./../Modules/Polls.js");
+const Trivia = require("./../Modules/Trivia.js");
 
 const app = express();
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(bodyParser.json());
+app.use(compression());
+app.enable("trust proxy");
+app.use(bodyParser.urlencoded({
+	extended: true,
+	parameterLimit: 10000,
+	limit: "5mb"
+}));
+app.use(bodyParser.json({
+	parameterLimit: 10000,
+	limit: "5mb"
+}));
 app.use(express.static('static'));
 app.set("json spaces", 2);
 
@@ -97,18 +111,29 @@ module.exports = (bot, db, auth, config, winston) => {
 
 	// Landing page
 	app.get("/", (req, res) => {
+		var uptime = process.uptime();
 		res.render("pages/landing.ejs", {
 			authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 			bannerMessage: config.homepage_message_html,
 			rawServerCount: bot.guilds.size,
 			roundedServerCount: Math.floor(bot.guilds.size/100)*100,
-			rawUserCount: bot.users.size,
-			rawUptime: secondsToString(process.uptime()).slice(0, -1),
-			roundedUptime: Math.floor(process.uptime()/3600)
+			rawUserCount: Math.floor(bot.users.size/1000) + "K",
+			rawUptime: moment.duration(uptime, "seconds").humanize(),
+			roundedUptime: getRoundedUptime(uptime)
 		});
 	});
 
+	// Add to server link
+	app.get("/add", (req, res) => {
+		res.redirect(config.oauth_link);
+	});
+
 	// AwesomeBot data API
+	app.use("/api/", new RateLimit({
+		windowMs: 3600000,	// 150 requests/per hr
+		max: 150,
+		delayMs: 0 
+	}));
 	app.get("/api/servers", (req, res) => {
 		var params = {
 			"config.public_data.isShown": true
@@ -116,17 +141,11 @@ module.exports = (bot, db, auth, config, winston) => {
 		if(req.query.id) {
 			params["_id"] = req.query.id;
 		}
-		db.servers.find(params, (err, serverDocuments) => {
+		db.servers.find(params).skip(req.query.start ? parseInt(req.query.start) : 0).limit(req.query.count ? parseInt(req.query.count) : bot.guilds.size).exec((err, serverDocuments) => {
 			if(!err && serverDocuments) {
-				var data = [];
-				var startIndex = req.query.start ? parseInt(req.query.start) : 0;
-				var endIndex = req.query.count ? (startIndex + parseInt(req.query.count)) : serverDocuments.length;
-				for(var i=startIndex; i<serverDocuments.length; i++) {
-					data.push(getServerData(serverDocuments[i]) || serverDocuments[i]._id);
-					if(i==endIndex-1) {
-						break;
-					}
-				}
+				var data = serverDocuments.map(serverDocument => {
+					return getServerData(serverDocument) || serverDocument._id;
+				});
 				res.json(data);
 			} else {
 				res.sendStatus(400);
@@ -163,21 +182,20 @@ module.exports = (bot, db, auth, config, winston) => {
 		if(req.query.owner) {
 			params["owner_id"] = req.query.owner;
 		}
-		db.gallery.find(params, (err, galleryDocuments) => {
-			if(!err && galleryDocuments) {
-				var data = [];
-				var startIndex = req.query.start ? parseInt(req.query.start) : 0;
-				var endIndex = req.query.count ? (startIndex + parseInt(req.query.count)) : galleryDocuments.length;
-				for(var i=startIndex; i<galleryDocuments.length; i++) {
-					data.push(getExtensionData(galleryDocuments[i]));
-					if(i==endIndex-1) {
-						break;
-					}
-				}
-				res.json(data);
-			} else {
-				res.sendStatus(400);
+		db.gallery.count(params, (err, rawCount) => {
+			if(!err || rawCount==null) {
+				rawCount = 0;
 			}
+			db.gallery.find(params).skip(req.query.start ? parseInt(req.query.start) : 0).limit(req.query.count ? parseInt(req.query.count) : rawCount).exec((err, galleryDocuments) => {
+				if(!err && galleryDocuments) {
+					var data = galleryDocuments.map(galleryDocument => {
+						return getExtensionData(galleryDocument);
+					});
+					res.json(data);
+				} else {
+					res.sendStatus(400);
+				}
+			});
 		});
 	});
 
@@ -193,88 +211,132 @@ module.exports = (bot, db, auth, config, winston) => {
 		        	$sum: {
 		        		$add: ["$messages_today"]
 		        	}
+		        },
+		        active: {
+		        	$sum: {
+		        		$cond: [
+		        			{$gt: ["$messages_today", 0]},
+		        			1,
+		        			0
+		        		]
+		        	}
 		        }
 		    }
 		}, (err, result) => {
 			var messageCount = 0;
+			var activeServers = bot.guilds.size;
 			if(!err && result) {
 				messageCount = result[0].total;
+				activeServers = result[0].active;
 			}
-			db.servers.find({
-				$where: "this.messages_today > 0"
-			}, (err, serverDocuments) => {
-				var activeServers = bot.guilds.size;
-				if(!err && serverDocuments) {
-					activeServers = serverDocuments.length;
+
+			if(req.path=="/activity/servers") {
+				if(!req.query.q) {
+					req.query.q = "";
+				}
+				if(!req.query.count || isNaN(req.query.count)) {
+					var count = 16;
+				} else {
+					var count = parseInt(req.query.count) || bot.guilds.size;
+				}
+				if(!req.query.page || isNaN(req.query.page)) {
+					var page = 1;
+				} else {
+					var page = parseInt(req.query.page);
+				}
+				if(!req.query.sort) {
+					req.query.sort = "messages-des";
+				}
+				if(!req.query.category) {
+					req.query.category = "All";
+				}
+				if(!req.query.publiconly) {
+					req.query.publiconly = false;
 				}
 
-				if(req.path=="/activity/servers") {
-					if(!req.query.q) {
-						req.query.q = "";
-					}
-					if(!req.query.count) {
-						req.query.count = 16;
-					}
-					if(!req.query.page) {
-						req.query.page = 1;
-					}
-					if(!req.query.sort) {
-						req.query.sort = "messages-des";
-					}
-					if(!req.query.category) {
-						req.query.category = "All";
-					}
-					if(!req.query.publiconly) {
-						req.query.publiconly = false;
-					}
-
-					var findCriteria = {
-						"config.public_data.isShown": true
+				var matchCriteria = {
+					"config.public_data.isShown": true
+				};
+				if(req.query.q) {
+					var query = req.query.q.toLowerCase();
+					matchCriteria["_id"] = {
+						$in: bot.guilds.filter(svr => {
+							return svr.name.toLowerCase().indexOf(query)>-1 || svr.id==query;
+						}).map(svr => {
+							return svr.id;
+						})
 					};
-					if(req.query.category!="All") {
-						findCriteria["config.public_data.server_listing.category"] = req.query.category;
+				} else {
+					matchCriteria["_id"] = {
+						$in: Array.from(bot.guilds.keys())
+					};
+				}
+				if(req.query.category!="All") {
+					matchCriteria["config.public_data.server_listing.category"] = req.query.category;
+				}
+				if(req.query.publiconly=="true") {
+					matchCriteria["config.public_data.server_listing.isEnabled"] = true;
+				}
+
+				var sortParams;
+				switch(req.query.sort) {
+					case "members-asc":
+						sortParams = {
+							"member_count": 1
+						};
+						break;
+					case "members-des":
+						sortParams = {
+							"member_count": -1
+						};
+						break;
+					case "messages-asc":
+						sortParams = {
+							"messages_today": 1
+						};
+						break;
+					case "messages-des":
+					default:
+						sortParams = {
+							"messages_today": -1
+						};
+						break;
+				}
+
+				db.servers.count(matchCriteria, (err, rawCount) => {
+					if(err || rawCount==null) {
+						rawCount = bot.guilds.size;
 					}
-					if(req.query.publiconly=="true") {
-						findCriteria["config.public_data.server_listing.isEnabled"] = true;
-					}
-					db.servers.find(findCriteria).exec((err, serverDocuments) => {
-						var serverData = [];
-						var query = req.query.q.toLowerCase();
-						for(var i=0; i<serverDocuments.length; i++) {
-							var data = getServerData(serverDocuments[i]);
-							if(data) {
-								if(query && data.name.toLowerCase().indexOf(query)==-1 && data.id!=query && data.owner.username.toLowerCase().indexOf(query)==-1 && (!data.description || data.description.toLowerCase().indexOf(query)==-1)) {
-									continue;
-								} else {
-									serverData.push(data);
+					db.servers.aggregate([
+						{
+							$match: matchCriteria
+						},
+						{
+							$project: {
+								"messages_today": 1,
+								"config.public_data": 1,
+								"config.command_prefix": 1,
+								"member_count": {
+									$size: "$members"
 								}
 							}
+						},
+						{
+							$sort: sortParams
+						},
+						{
+							$skip: count * (page - 1)
+						},
+						{
+							$limit: count
 						}
-						serverData.sort((a, b) => {
-							switch(req.query.sort) {
-								case "messages-asc":
-									return a.messages - b.messages;
-								case "messages-des":
-									return b.messages - a.messages;
-								case "alphabetical-asc":
-									return a.name.localeCompare(b.name);
-								case "alphabetical-des":
-									return b.name.localeCompare(a.name);
-								case "owner-asc":
-									return a.owner.username.localeCompare(b.owner.username);
-								case "owner-des":
-									return b.owner.username.localeCompare(a.owner.username);
-								case "members-asc":
-									return a.members - b.members;
-								case "members-des":
-									return b.members - a.members;
-								case "created-asc":
-									return a.created - b.created;
-								case "created-des":
-									return b.created - a.created;
-							}
-						});
-						var startItem = parseInt(req.query.count) * (parseInt(req.query.page) - 1);
+					], (err, serverDocuments) => {
+						var serverData = [];
+						if(!err && serverDocuments) {
+							serverData = serverDocuments.map(serverDocument => {
+								return getServerData(serverDocument);
+							});
+						}
 
 						var pageTitle = "Servers";
 						if(req.query.q) {
@@ -282,103 +344,115 @@ module.exports = (bot, db, auth, config, winston) => {
 						}
 						renderPage({
 							pageTitle: pageTitle,
-							itemsPerPage: req.query.count,
-							currentPage: parseInt(req.query.page),
-							numPages: Math.ceil(serverData.length/((req.query.count=="0" ? serverData.length : parseInt(req.query.count)))),
-							serverData: serverData.slice(startItem, startItem + (req.query.count=="0" ? serverData.length : parseInt(req.query.count))),
+							itemsPerPage: count.toString(),
+							currentPage: page,
+							numPages: Math.ceil(rawCount/(count==0 ? rawCount : count)),
+							serverData: serverData,
 							selectedCategory: req.query.category,
 							isPublicOnly: req.query.publiconly,
 							sortOrder: req.query.sort
 						});
 					});
-				} else if(req.path=="/activity/users") {
-					if(!req.query.q) {
-						req.query.q = "";
-					}
+				});
+			} else if(req.path=="/activity/users") {
+				if(!req.query.q) {
+					req.query.q = "";
+				}
 
-					var userProfile;
-					if(req.query.q) {
-						var usr = findQueryUser(req.query.q, bot.users);
-						if(usr) {
-							db.users.findOrCreate({_id: usr.id}, (err, userDocument) => {
-								if(err || !userDocument) {
-									userDocument = {};
-								}
-								var userProfile = getUserData(usr, userDocument);
-								renderPage({
-									pageTitle: userProfile.username + "'s Profile",
-									userProfile: userProfile
-								});
-							});
-						} else {
-							renderPage({pageTitle: "Search for user \"" + req.query.q + "\""});
-						}
-					} else {
-						db.users.find({}, (err, userDocuments) => {
-							var totalPoints = 0;
-							var publicProfilesCount = 0;
-							var reminderCount = 0;
-							var profileFieldCount = 0;
-							var afkUserCount = 0;
-							if(!err && userDocuments) {
-								for(var i=0; i<userDocuments.length; i++) {
-									totalPoints += userDocuments[i].points;
-									if(userDocuments[i].isProfilePublic) {
-										publicProfilesCount++;
-									}
-									reminderCount += userDocuments[i].reminders.length;
-									if(userDocuments[i].profile_fields) {
-										profileFieldCount += Object.keys(userDocuments[i].profile_fields).length;
-									}
-									if(userDocuments[i].afk_message) {
-										afkUserCount++;
-									}
-								}
+				var userProfile;
+				if(req.query.q) {
+					var usr = findQueryUser(req.query.q, bot.users);
+					if(usr) {
+						db.users.findOrCreate({_id: usr.id}, (err, userDocument) => {
+							if(err || !userDocument) {
+								userDocument = {};
 							}
+							var userProfile = getUserData(usr, userDocument);
 							renderPage({
-								pageTitle: "Users",
-								totalPoints: totalPoints,
-								publicProfilesCount: publicProfilesCount,
-								reminderCount: reminderCount,
-								profileFieldCount: profileFieldCount,
-								afkUserCount: afkUserCount,
+								pageTitle: userProfile.username + "'s Profile",
+								userProfile: userProfile
 							});
 						});
+					} else {
+						renderPage({pageTitle: "Search for user \"" + req.query.q + "\""});
 					}
-				}
+				} else {
+					db.users.aggregate({
+						$group: {
+							_id: null,
+							totalPoints: {
+								$sum: {
+									$add: "$points"
+								}
+							},
+							publicProfilesCount: {
+								$sum: {
+									$cond: [
+										{$ne: ["$isProfilePublic", false]},
+										1,
+										0
+									]
+								}
+							},
+							reminderCount: {
+								$sum: {
+									$size: "$reminders"
+								}
+							}
+						}
+					}, (err, result) => {
+						var totalPoints = 0;
+						var publicProfilesCount = 0;
+						var reminderCount = 0;
+						if(!err && result) {
+							totalPoints = result[0].totalPoints;
+							publicProfilesCount = result[0].publicProfilesCount;
+							reminderCount = result[0].reminderCount;
+						}
 
-				function renderPage(data) {
-					res.render("pages/activity.ejs", {
-						authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
-						rawServerCount: bot.guilds.size,
-						rawUserCount: bot.users.size,
-						totalMessageCount: messageCount,
-						numActiveServers: activeServers,
-						activeSearchQuery: req.query.q,
-						mode: req.path.substring(req.path.lastIndexOf("/")+1),
-						data: data
+						renderPage({
+							pageTitle: "Users",
+							totalPoints: totalPoints,
+							publicProfilesCount: publicProfilesCount,
+							reminderCount: reminderCount
+						});
 					});
 				}
-			});
+			}
+
+			function renderPage(data) {
+				res.render("pages/activity.ejs", {
+					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+					rawServerCount: bot.guilds.size,
+					rawUserCount: bot.users.size,
+					totalMessageCount: messageCount,
+					numActiveServers: activeServers,
+					activeSearchQuery: req.query.q,
+					mode: req.path.substring(req.path.lastIndexOf("/")+1),
+					data: data
+				});
+			}
 		});
 	});
 	function getServerData(serverDocument) {
 		var data;
 		var svr = bot.guilds.get(serverDocument._id);
 		if(svr) {
+			var owner = svr.members.get(svr.ownerID);
 			data = {
 				name: svr.name,
 				id: svr.id,
 				icon: svr.iconURL || "/img/discord-icon.png",
 				owner: {
-					username: svr.members.get(svr.ownerID).user.username,
-					id: svr.members.get(svr.ownerID).id,
-					avatar: svr.members.get(svr.ownerID).user.avatarURL || "/img/discord-icon.png",
-					name: svr.members.get(svr.ownerID).nick || svr.members.get(svr.ownerID).user.username
+					username: owner.user.username,
+					id: owner.id,
+					avatar: owner.user.avatarURL || "/img/discord-icon.png",
+					name: owner.nick || owner.user.username
 				},
 				members: svr.members.size,
 				messages: serverDocument.messages_today,
-				created: Math.ceil((Date.now() - svr.createdAt)/86400000),
+				rawCreated: moment(svr.createdAt).format(config.moment_date_format),
+				relativeCreated: Math.ceil((Date.now() - svr.createdAt)/86400000),
 				command_prefix: bot.getCommandPrefix(svr, serverDocument),
 				category: serverDocument.config.public_data.server_listing.category,
 				description: serverDocument.config.public_data.server_listing.isEnabled ? (md.makeHtml(serverDocument.config.public_data.server_listing.description || "No description provided.")) : null,
@@ -391,6 +465,8 @@ module.exports = (bot, db, auth, config, winston) => {
 		var sampleMember = bot.getFirstMember(usr);
 		var mutualServers = bot.guilds.filter(svr => {
 			return svr.members.has(usr.id);
+		}).sort((a, b) => {
+			return a.name.localeCompare(b.name);
 		});
 		var userProfile = {
 			username: usr.username,
@@ -399,13 +475,12 @@ module.exports = (bot, db, auth, config, winston) => {
 			id: usr.id,
 			status: sampleMember.status,
 			game: bot.getGame(sampleMember),
-			created: prettyDate(new Date(usr.createdAt)),
-			roundedAccountAge: Math.ceil((Date.now() - usr.createdAt)/86400000),
-			rawAccountAge: secondsToString((Date.now() - usr.createdAt)/1000),
+			roundedAccountAge: moment(usr.createdAt).fromNow(),
+			rawAccountAge: moment(usr.createdAt).format(config.moment_date_format),
 			backgroundImage: userDocument.profile_background_image || "http://i.imgur.com/8UIlbtg.jpg",
 			points: userDocument.points || 1,
-			rawLastSeen: secondsToString(userDocument.last_seen ? (Math.floor(((Date.now() - userDocument.last_seen)/1000)/60)*60) : 0),
-			lastSeen: prettyDate(userDocument.last_seen ? new Date(userDocument.last_seen) : new Date()),
+			lastSeen: userDocument.last_seen ? moment(userDocument.last_seen).fromNow() : null,
+			rawLastSeen: userDocument.last_seen ? moment(userDocument.last_seen).format(config.moment_date_format) : null,
 			mutualServerCount: mutualServers.length,
 			pastNameCount: (userDocument.past_names || {}).length || 0,
 			isAfk: userDocument.afk_message!=null && userDocument.afk_message!="",
@@ -425,7 +500,15 @@ module.exports = (bot, db, auth, config, winston) => {
 				break;
 		}
 		if(userDocument.isProfilePublic) {
-			userProfile.profileFields = userDocument.profile_fields;
+			var profileFields;
+			if(userDocument.profile_fields) {
+				profileFields = {};
+				for(var key in userDocument.profile_fields) {
+					profileFields[key] = md.makeHtml(userDocument.profile_fields[key]);
+					profileFields[key] = profileFields[key].substring(3, profileFields[key].length-4);
+				}
+			}
+			userProfile.profileFields = profileFields;
 			userProfile.pastNames = userDocument.past_names;
 			userProfile.afkMessage = userDocument.afk_message;
 			mutualServers.forEach(svr => {
@@ -505,17 +588,35 @@ module.exports = (bot, db, auth, config, winston) => {
 						break;
 					case "accept":
 						getGalleryDocument(galleryDocument => {
-							messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been accepted to the AwesomeBot extension gallery! 🎉 " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
+							messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been accepted to the AwesomeBot extension gallery! 🎉 " + config.hosting_url + "extensions/gallery?id=" + galleryDocument._id);
 							galleryDocument.state = "gallery";
 							galleryDocument.save(err => {
 								res.sendStatus(err ? 500 : 200);
+								db.servers.find({
+									extensions: {
+										$elemMatch: {
+											_id: galleryDocument._id
+										}
+									}
+								}, (err, serverDocuments) => {
+									if(!err && serverDocuments) {
+										serverDocuments.forEach(serverDocument => {
+											serverDocument.extensions.id(galleryDocument._id).updates_available++;
+											serverDocument.save(err => {
+												if(err) {
+													winston.error("Failed to save server data for extension update", {svrid: serverDocument._id}, err);
+												}
+											});
+										});
+									}
+								});
 							});
 						});
 						break;
 					case "feature":
 						getGalleryDocument(galleryDocument => {
 							if(!galleryDocument.featured) {
-								messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been featured on the AwesomeBot extension gallery! 🌟 " + config.hosting_url + "extensions/gallery?q=" + galleryDocument._id);
+								messageOwner(galleryDocument.owner_id, "Your extension " + galleryDocument.name + " has been featured on the AwesomeBot extension gallery! 🌟 " + config.hosting_url + "extensions/gallery?id=" + galleryDocument._id);
 							}
 							galleryDocument.featured = galleryDocument.featured!=true;
 							galleryDocument.save(err => {
@@ -532,10 +633,8 @@ module.exports = (bot, db, auth, config, winston) => {
 									ownerUserDocument.points -= galleryDocument.points * 10;
 									ownerUserDocument.save(err => {});
 								}
-								db.gallery.findByIdAndRemove(galleryDocument._id, err => {
-									try {
-										fs.unlinkSync(__dirname + "/../Extensions/gallery-" + galleryDocument._id + ".abext");
-									} catch(err) {}
+								galleryDocument.state = "saved";
+								galleryDocument.save(err => {
 									res.sendStatus(err ? 500 : 200);
 								});
 							});
@@ -591,14 +690,18 @@ module.exports = (bot, db, auth, config, winston) => {
 		}
 	});
 	app.get("/extensions/(|gallery|queue)", (req, res) => {
-		if(req.isAuthenticated()) {
-			if(!req.query.count) {
-				req.query.count = 18;
-			}
-			if(!req.query.page) {
-				req.query.page = 1;
-			}
+		if(!req.query.count) {
+			var count = 18;
+		} else {
+			var count = parseInt(req.query.count);
+		}
+		if(!req.query.page) {
+			var page = 1;
+		} else {
+			var page = parseInt(req.query.page);
+		}
 
+		if(req.isAuthenticated()) {
 			var serverData = [];
 			var usr = bot.users.get(req.user.id);
 			function addServerData(i, callback) {
@@ -608,7 +711,7 @@ module.exports = (bot, db, auth, config, winston) => {
 						db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 							if(!err && serverDocument) {
 								var member = svr.members.get(usr.id);
-								if(bot.getUserBotAdmin(svr, serverDocument, member)==3) {
+								if(bot.getUserBotAdmin(svr, serverDocument, member)>=3) {
 									serverData.push({
 										name: req.user.guilds[i].name,
 										id: req.user.guilds[i].id,
@@ -641,44 +744,43 @@ module.exports = (bot, db, auth, config, winston) => {
 			renderPage();
 		}
 		function renderPage(upvoted_gallery_extensions, serverData) {
-			var extensionState = req.path.substring(req.path.lastIndexOf("/")+1);
-			db.gallery.find({
+		var extensionState = req.path.substring(req.path.lastIndexOf("/")+1);
+			db.gallery.count({
 				state: extensionState
-			}, (err, galleryDocuments) => {
-				var pageTitle = extensionState.charAt(0).toUpperCase() + extensionState.slice(1) + " - AwesomeBot Extensions";
-				if(req.query.q) {
-					pageTitle = "Search for \"" + req.query.q + "\" in " + extensionState.charAt(0).toUpperCase() + extensionState.slice(1) + " - AwesomeBot Extensions";
-					var query = req.query.q.toLowerCase();
-					galleryDocuments = galleryDocuments.filter(galleryDocument => {
-						return galleryDocument._id==query || galleryDocument.name.toLowerCase().indexOf(query)>-1 || galleryDocument.description.toLowerCase().indexOf(query)>-1 || galleryDocument.owner_id==query;
-					});
+			}, (err, rawCount) => {
+				if(err || rawCount==null) {
+					rawCount = 0;
 				}
-				var extensionData = galleryDocuments.sort((a, b) => {
-					if(a.featured && !b.featured) {
-						return -1;
-					} else if(!a.featured && b.featured) {
-						return 1;
-					} else if(a.points!=b.points) {
-						return b.points - a.points;
-					} else {
-						return new Date(b.last_updated) - new Date(a.last_updated);
-					}
-				}).map(getExtensionData);
 
-				var startItem = parseInt(req.query.count) * (parseInt(req.query.page) - 1);
-				res.render("pages/extensions.ejs", {
-					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
-					isMaintainer: req.isAuthenticated() ? config.maintainers.indexOf(req.user.id)>-1 : false,
-					pageTitle: pageTitle,
-					serverData: serverData,
-					activeSearchQuery: req.query.q,
-					mode: extensionState,
-					rawCount: extensionData.length,
-					itemsPerPage: req.query.count,
-					currentPage: parseInt(req.query.page),
-					numPages: Math.ceil(extensionData.length/((req.query.count=="0" ? extensionData.length : parseInt(req.query.count)))),
-					extensions: extensionData.slice(startItem, startItem + (req.query.count=="0" ? extensionData.length : parseInt(req.query.count))),
-					upvotedData: upvoted_gallery_extensions
+				var matchCriteria = {
+					"state": extensionState
+				}
+				if(req.query.id) {
+					matchCriteria["_id"] = req.query.id;
+				} else if(req.query.q) {
+					matchCriteria["$text"] = {
+						$search: req.query.q
+					};
+				}
+
+				db.gallery.find(matchCriteria).sort("-featured -points -last_updated").skip(count * (page - 1)).limit(count).exec((err, galleryDocuments) => {
+					var pageTitle = extensionState.charAt(0).toUpperCase() + extensionState.slice(1) + " - AwesomeBot Extensions";
+					var extensionData = galleryDocuments.map(getExtensionData);
+
+					res.render("pages/extensions.ejs", {
+						authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+						isMaintainer: req.isAuthenticated() ? config.maintainers.indexOf(req.user.id)>-1 : false,
+						pageTitle: pageTitle,
+						serverData: serverData,
+						activeSearchQuery: req.query.id || req.query.q,
+						mode: extensionState,
+						rawCount: rawCount,
+						itemsPerPage: req.query.count,
+						currentPage: page,
+						numPages: Math.ceil(rawCount/(count==0 ? rawCount : count)),
+						extensions: extensionData,
+						upvotedData: upvoted_gallery_extensions
+					});
 				});
 			});
 		}
@@ -696,7 +798,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				break;
 			case "timer":
 				var typeIcon = "clock-o";
-				var typeDescription = "Runs every " + secondsToString(galleryDocument.interval/1000).slice(0, -1);
+				var typeDescription = "Interval: " + moment(galleryDocument.interval).humanize();
 				break;
 		}
 		return {
@@ -715,8 +817,8 @@ module.exports = (bot, db, auth, config, winston) => {
 			},
 			status: galleryDocument.state,
 			points: galleryDocument.points,
-			relativeLastUpdated: Math.floor((new Date() - new Date(galleryDocument.last_updated))/86400000),
-			rawLastUpdated: prettyDate(new Date(galleryDocument.last_updated))
+			relativeLastUpdated: moment(galleryDocument.last_updated).fromNow(),
+			rawLastUpdated: moment(galleryDocument.last_updated).format(config.moment_date_format)
 		};
 	}
 
@@ -876,56 +978,72 @@ module.exports = (bot, db, auth, config, winston) => {
 
 	// Wiki page (documentation)
 	app.get("/wiki", (req, res) => {
-		var wikiPages = [];
 		fs.readdir(__dirname + "/../Wiki/", (err, items) => {
-			var searchQuery = "";
-			var searchResults;
-			var pageContent = "";
-			var pageTitle = "AwesomeBot Wiki";
-			if(req.query.q) {
-				searchQuery = req.query.q;
-				searchResults = [];
-				for(var i=0; i<items.length; i++) {
-					if(items[0].indexOf(".")!=0 && items[0].endsWith(".md")) {
-						try {
-							var content = removeMd(fs.readFileSync(__dirname + "/../Wiki/" + items[i], "utf8"));
-						} catch(err) {
-							continue;
-						}
-						var title = items[i].substring(0, items[i].indexOf("."));
-						var contentMatch = content.toLowerCase().indexOf(req.query.q);
-						if(title.toLowerCase().indexOf(req.query.q)>-1 || contentMatch>-1) {
-							var startIndex = contentMatch<300 ? 0 : (contentMatch - 300);
-							var endIndex = contentMatch>content.length-300 ? content.length : (contentMatch + 300);
-							searchResults.push({
-								title: title,
-								matchText: (startIndex>0 ? "..." : "") + content.substring(startIndex, contentMatch) + "<strong>" + req.query.q + "</strong>" + content.substring(contentMatch + req.query.q.length, endIndex) + (endIndex<content.length ? "..." : "")
-							});
+			if(err) {
+				res.redirect("/error");
+			} else {
+				if(req.query.q) {
+					var searchResults = [];
+					for(var i=0; i<items.length; i++) {
+						if(items[i].indexOf(".")!=0 && items[i].endsWith(".md")) {
+							try {
+								var content = removeMd(fs.readFileSync(__dirname + "/../Wiki/" + items[i], "utf8"));
+							} catch(err) {
+								continue;
+							}
+							var title = items[i].substring(0, items[i].indexOf("."));
+							var contentMatch = content.toLowerCase().indexOf(req.query.q);
+							if(title.toLowerCase().indexOf(req.query.q)>-1 || contentMatch>-1) {
+								var startIndex = contentMatch<300 ? 0 : (contentMatch - 300);
+								var endIndex = contentMatch>content.length-300 ? content.length : (contentMatch + 300);
+								searchResults.push({
+									title: title,
+									matchText: (startIndex>0 ? "..." : "") + content.substring(startIndex, contentMatch) + "<strong>" + req.query.q + "</strong>" + content.substring(contentMatch + req.query.q.length, endIndex) + (endIndex<content.length ? "..." : "")
+								});
+							}
 						}
 					}
-				}
-				pageTitle = "Search for \"" + req.query.q + "\" - AwesomeBot Wiki";
-			} else {
-				if(!req.query.page) {
-					req.query.page = "Home";
-				}
-				if(items.indexOf(req.query.page + ".md")>-1) {
-					pageContent = md.makeHtml(fs.readFileSync(__dirname + "/../Wiki/" + req.query.page + ".md", "utf8"));
+					res.render("pages/wiki.ejs", {
+						authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+						pageList: items.filter(a => {
+							return a.indexOf(".")!=0 && a.endsWith(".md");
+						}),
+						pageTitle: "Search for \"" + req.query.q + "\" - AwesomeBot Wiki",
+						activeSearchQuery: req.query.q,
+						searchResults: searchResults,
+						pageContent: null
+					});
 				} else {
-					pageContent = "That page doesn't exist. <a href='/wiki'>Take me home!</a>";
+					res.redirect("/wiki/Home");
 				}
-				pageTitle = req.query.page + " - AwesomeBot Wiki";
 			}
-			res.render("pages/wiki.ejs", {
-				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
-				pageList: items.filter(a => {
-					return a.indexOf(".")!=0 && a.endsWith(".md");
-				}),
-				pageTitle: pageTitle,
-				searchQuery: searchQuery,
-				searchResults: searchResults,
-				pageContent: pageContent
-			});
+		});
+	});
+	app.get("/wiki/*", (req, res) => {
+		fs.readdir(__dirname + "/../Wiki/", (err, items) => {
+			if(err) {
+				res.redirect("/error");
+			} else {
+				var page = req.path.substring(req.path.lastIndexOf("/")+1);
+				var pageTitle = page + " - AwesomeBot Wiki";
+				var pageContent;
+				if(items.indexOf(page + ".md")>-1) {
+					try {
+						pageContent = md.makeHtml(fs.readFileSync(__dirname + "/../Wiki/" + page + ".md", "utf8"));
+					} catch(err) {}
+				}
+				res.render("pages/wiki.ejs", {
+					authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
+					pageList: items.filter(a => {
+						return a.indexOf(".")!=0 && a.endsWith(".md");
+					}),
+					pageTitle: pageTitle,
+					activeSearchQuery: "",
+					searchResults: null,
+					mode: page,
+					pageContent: pageContent
+				});
+			}
 		});
 	});
 
@@ -947,7 +1065,7 @@ module.exports = (bot, db, auth, config, winston) => {
 						db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 							if(!err && serverDocument) {
 								var member = svr.members.get(usr.id);
-								if(bot.getUserBotAdmin(svr, serverDocument, member)==3) {
+								if(bot.getUserBotAdmin(svr, serverDocument, member)>=3) {
 									next(member, svr, serverDocument);
 								} else {
 									res.redirect("/dashboard");
@@ -1004,7 +1122,7 @@ module.exports = (bot, db, auth, config, winston) => {
 		failureRedirect: "/error"
 	}), (req, res) => {
 		if(config.global_blocklist.indexOf(req.user.id)>-1 || !req.user.verified) {
-			req.logout();
+			res.redirect("/error");
 		} else {
 			res.redirect("/dashboard");
 		}
@@ -1020,6 +1138,10 @@ module.exports = (bot, db, auth, config, winston) => {
 			function addServerData(i, callback) {
 				if(i<req.user.guilds.length) {
 					var svr = bot.guilds.get(req.user.guilds[i].id);
+					if(!svr && !Boolean((parseInt(req.user.guilds[i].permissions) >> 5) & 1)) {
+						addServerData(++i, callback);
+						return;
+					}
 					var data = {
 						name: req.user.guilds[i].name,
 						id: req.user.guilds[i].id,
@@ -1031,14 +1153,12 @@ module.exports = (bot, db, auth, config, winston) => {
 						db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 							if(!err && serverDocument) {
 								var member = svr.members.get(usr.id);
-								if(bot.getUserBotAdmin(svr, serverDocument, member)==3) {
+								if(bot.getUserBotAdmin(svr, serverDocument, member)>=3) {
 									data.isAdmin = true;
-									serverData.push(data);
 								}
-								addServerData(++i, callback);
-							} else {
-								addServerData(++i, callback);
 							}
+							serverData.push(data);
+							addServerData(++i, callback);
 						});
 					} else {
 						serverData.push(data);
@@ -1159,11 +1279,13 @@ module.exports = (bot, db, auth, config, winston) => {
 				},
 				currentPage: req.path,
 				configData: {
+					chatterbot: serverDocument.config.chatterbot,
 					command_cooldown: serverDocument.config.command_cooldown,
 					command_fetch_properties: serverDocument.config.command_fetch_properties,
 					command_prefix: bot.getCommandPrefix(svr, serverDocument),
 					delete_command_messages: serverDocument.config.delete_command_messages
-				}
+				},
+				botName: svr.members.get(bot.user.id).nick || bot.user.username
 			});
 		});
 	});
@@ -1176,6 +1298,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				serverDocument.config.command_prefix = req.body.command_prefix;
 			}
 			serverDocument.config.delete_command_messages = req.body.delete_command_messages=="on";
+			serverDocument.config.chatterbot = req.body.chatterbot=="on";
 			serverDocument.config.command_cooldown = parseInt(req.body.command_cooldown);
 			serverDocument.config.command_fetch_properties.default_count = parseInt(req.body.default_count);
 			serverDocument.config.command_fetch_properties.max_count = parseInt(req.body.max_count);
@@ -1188,9 +1311,12 @@ module.exports = (bot, db, auth, config, winston) => {
 	app.get("/dashboard/commands/command-list", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
 			var commandDescriptions = {};
-			for(var command in commands.public) {
-				commandDescriptions[command] = commands.public[command].description;
-			}
+			var commandCategories = {};
+			bot.getPublicCommandList().forEach(command => {
+				var commandData = bot.getPublicCommandMetadata(command);
+				commandDescriptions[command] = commandData.description;
+				commandCategories[command] = commandData.category;
+			});
 			res.render("pages/admin-command-list.ejs", {
 				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 				serverData: {
@@ -1203,7 +1329,8 @@ module.exports = (bot, db, auth, config, winston) => {
 				configData: {
 					commands: serverDocument.toObject().config.commands
 				},
-				commandDescriptions: commandDescriptions
+				commandDescriptions: commandDescriptions,
+				commandCategories: commandCategories
 			});
 		});
 	});
@@ -1212,13 +1339,48 @@ module.exports = (bot, db, auth, config, winston) => {
 	});
 	app.post("/dashboard/commands/command-list", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
-			for(var command in serverDocument.toObject().config.commands) {
-				parseCommandOptions(svr, serverDocument, command, req.body);
+			if(req.body["preset-applied"]!=null) {
+				var disabled_channel_ids = [];
+				svr.channels.forEach(ch => {
+					if(ch.type==0) {
+						if(req.body["preset-disabled_channel_ids-" + ch.id]==null) {
+							disabled_channel_ids.push(ch.id);
+						}
+					}
+				});
+				for(var command in serverDocument.toObject().config.commands) {
+					serverDocument.config.commands[command].admin_level = req.body["preset-admin_level"] || 0;
+					serverDocument.config.commands[command].disabled_channel_ids = disabled_channel_ids;
+				}
+			} else {
+				for(var command in serverDocument.toObject().config.commands) {
+					parseCommandOptions(svr, serverDocument, command, req.body);
+				}
 			}
 
 			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
 	});
+	function parseCommandOptions(svr, serverDocument, command, data) {
+		var commandData = bot.getPublicCommandMetadata(command);
+		if(commandData) {
+			if(!serverDocument.config.commands[command]) {
+				serverDocument.config.commands[command] = {};
+			}
+			if(commandData.defaults.admin_level<4) {
+				serverDocument.config.commands[command].isEnabled = data[command + "-isEnabled"]=="on";
+				serverDocument.config.commands[command].admin_level = data[command + "-admin_level"] || 0;
+				serverDocument.config.commands[command].disabled_channel_ids = [];
+				svr.channels.forEach(ch => {
+					if(ch.type==0) {
+						if(data[command + "-disabled_channel_ids-" + ch.id]==null) {
+							serverDocument.config.commands[command].disabled_channel_ids.push(ch.id);
+						}
+					}
+				});
+			}
+		}
+	}
 
 	// Admin console music
 	app.get("/dashboard/commands/music", (req, res) => {
@@ -1235,18 +1397,21 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					commands: {
-						music: serverDocument.toObject().config.commands.music,
+						music: serverDocument.config.commands.music,
 						trivia: {
 							isEnabled: serverDocument.config.commands.trivia.isEnabled
 						}
 					},
-					music_data: serverDocument.toObject().config.music_data
+					music_data: serverDocument.config.music_data
 				},
 				config: {
 					max_voice_channels: config.max_voice_channels
 				},
 				commandDescriptions: {
-					music: commands.public.music.description
+					music: bot.getPublicCommandMetadata("music").description
+				},
+				commandCategories: {
+					music: bot.getPublicCommandMetadata("music").category
 				}
 			});
 		});
@@ -1303,7 +1468,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				channelData: getChannelData(svr),
 				currentPage: req.path,
 				configData: {
-					rss_feeds: serverDocument.toObject().config.rss_feeds,
+					rss_feeds: serverDocument.config.rss_feeds,
 					commands: {
 						rss: serverDocument.config.commands.rss,
 						trivia: {
@@ -1312,7 +1477,10 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				},
 				commandDescriptions: {
-					rss: commands.public.rss.description
+					rss: bot.getPublicCommandMetadata("rss").description
+				},
+				commandCategories: {
+					rss: bot.getPublicCommandMetadata("rss").category
 				}
 			});
 		});
@@ -1364,7 +1532,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				channelData: getChannelData(svr),
 				currentPage: req.path,
 				configData: {
-					streamers_data: serverDocument.toObject().config.streamers_data,
+					streamers_data: serverDocument.config.streamers_data,
 					commands: {
 						streamers: serverDocument.config.commands.streamers,
 						trivia: {
@@ -1373,7 +1541,10 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				},
 				commandDescriptions: {
-					streamers: commands.public.streamers.description
+					streamers: bot.getPublicCommandMetadata("streamers").description
+				},
+				commandCategories: {
+					streamers: bot.getPublicCommandMetadata("streamers").category
 				}
 			});
 		});
@@ -1417,7 +1588,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				channelData: getChannelData(svr),
 				currentPage: req.path,
 				configData: {
-					tags: serverDocument.toObject().config.tags,
+					tags: serverDocument.config.tags,
 					commands: {
 						tag: serverDocument.config.commands.tag,
 						trivia: {
@@ -1426,7 +1597,10 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				},
 				commandDescriptions: {
-					tag: commands.public.tag.description
+					tag: bot.getPublicCommandMetadata("tag").description
+				},
+				commandCategories: {
+					tag: bot.getPublicCommandMetadata("tag").category
 				}
 			};
 			function cleanTag(content) {
@@ -1516,7 +1690,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				channelData: getChannelData(svr),
 				currentPage: req.path,
 				configData: {
-					translated_messages: serverDocument.toObject().config.translated_messages,
+					translated_messages: serverDocument.config.translated_messages,
 					commands: {
 						trivia: {
 							isEnabled: serverDocument.config.commands.trivia.isEnabled
@@ -1596,7 +1770,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					},
 					currentPage: req.path,
 					configData: {
-						trivia_sets: serverDocument.toObject().config.trivia_sets,
+						trivia_sets: serverDocument.config.trivia_sets,
 						commands: {
 							trivia: {
 								isEnabled: serverDocument.config.commands.trivia.isEnabled
@@ -1642,7 +1816,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				},
 				currentPage: req.path,
 				configData: {
-					custom_api_keys: serverDocument.toObject().config.custom_api_keys || {}
+					custom_api_keys: serverDocument.config.custom_api_keys || {}
 				}
 			});
 		});
@@ -1671,7 +1845,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				},
 				currentPage: req.path,
 				configData: {
-					tag_reaction: serverDocument.toObject().config.tag_reaction
+					tag_reaction: serverDocument.config.tag_reaction
 				}
 			});
 		});
@@ -1711,15 +1885,20 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					commands: {
-						games: serverDocument.toObject().config.commands.games,
-						messages: serverDocument.toObject().config.commands.messages,
-						stats: serverDocument.toObject().config.commands.stats
+						games: serverDocument.config.commands.games,
+						messages: serverDocument.config.commands.messages,
+						stats: serverDocument.config.commands.stats
 					}
 				},
 				commandDescriptions: {
-					games: commands.public.games.description,
-					messages: commands.public.messages.description,
-					stats: commands.public.stats.description
+					games: bot.getPublicCommandMetadata("games").description,
+					messages: bot.getPublicCommandMetadata("messages").description,
+					stats: bot.getPublicCommandMetadata("stats").description
+				},
+				commandCategories: {
+					games: bot.getPublicCommandMetadata("games").category,
+					messages: bot.getPublicCommandMetadata("messages").category,
+					stats: bot.getPublicCommandMetadata("stats").category
 				}
 			});
 		});
@@ -1751,18 +1930,12 @@ module.exports = (bot, db, auth, config, winston) => {
 				roleData: getRoleData(svr),
 				currentPage: req.path,
 				configData: {
-					commands: {
-						ranks: serverDocument.toObject().config.commands.ranks
-					},
-					ranks_list: serverDocument.toObject().config.ranks_list.map(a => {
+					ranks_list: serverDocument.config.ranks_list.map(a => {
 						a.members = serverDocument.members.filter(memberDocument => {
 							return memberDocument.rank==a._id;
 						}).length;
 						return a;
 					})
-				},
-				commandDescriptions: {
-					ranks: commands.public.ranks.description
 				}
 			});
 		});
@@ -1820,12 +1993,17 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					commands: {
-						points: serverDocument.toObject().config.commands.points
-					},
-					points_lottery: serverDocument.config.points_lottery
+						points: serverDocument.config.commands.points,
+						lottery: serverDocument.config.commands.lottery
+					}
 				},
 				commandDescriptions: {
-					points: commands.public.points.description
+					points: bot.getPublicCommandMetadata("points").description,
+					lottery: bot.getPublicCommandMetadata("lottery").description
+				},
+				commandCategories: {
+					points: bot.getPublicCommandMetadata("points").category,
+					lottery: bot.getPublicCommandMetadata("lottery").category
 				}
 			});
 		});
@@ -1836,7 +2014,7 @@ module.exports = (bot, db, auth, config, winston) => {
 	app.post("/dashboard/stats-points/awesome-points", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
 			parseCommandOptions(svr, serverDocument, "points", req.body);
-			serverDocument.config.points_lottery = req.body["points_lottery"]=="on";
+			parseCommandOptions(svr, serverDocument, "lottery", req.body);
 
 			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
@@ -1858,13 +2036,13 @@ module.exports = (bot, db, auth, config, winston) => {
 				}),
 				currentPage: req.path,
 				configData: {
-					admins: serverDocument.toObject().config.admins.filter(adminDocument => {
+					admins: serverDocument.config.admins.filter(adminDocument => {
 						return svr.roles.has(adminDocument._id);
 					}).map(adminDocument => {
 						adminDocument.name = svr.roles.get(adminDocument._id).name;
 						return adminDocument;
 					}),
-					auto_add_admins: serverDocument.toObject().config.auto_add_admins
+					auto_add_admins: serverDocument.config.auto_add_admins
 				}
 			});
 		});
@@ -1902,13 +2080,18 @@ module.exports = (bot, db, auth, config, winston) => {
 					id: svr.id,
 					icon: svr.iconURL || "/img/discord-icon.png"
 				},
+				channelData: getChannelData(svr),
 				roleData: getRoleData(svr),
 				currentPage: req.path,
 				configData: {
 					moderation: {
-						isEnabled: serverDocument.toObject().config.moderation.isEnabled,
-						autokick_members: serverDocument.toObject().config.moderation.autokick_members,
-						new_member_roles: serverDocument.toObject().config.moderation.new_member_roles
+						isEnabled: serverDocument.config.moderation.isEnabled,
+						autokick_members: serverDocument.config.moderation.autokick_members,
+						new_member_roles: serverDocument.config.moderation.new_member_roles
+					},
+					modlog: {
+						isEnabled: serverDocument.modlog.isEnabled,
+						channel_id: serverDocument.modlog.channel_id
 					}
 				}
 			});
@@ -1930,6 +2113,8 @@ module.exports = (bot, db, auth, config, winston) => {
 					}
 				}
 			});
+			serverDocument.modlog.isEnabled = req.body["modlog-isEnabled"]=="on";
+			serverDocument.modlog.channel_id = req.body["modlog-channel_id"];
 
 			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
@@ -1960,13 +2145,14 @@ module.exports = (bot, db, auth, config, winston) => {
 					}).map(usrid => {
 						var member = svr.members.get(usrid);
 						return {
-							name: member.user.username + " (global)",
+							name: member.user.username,
 							id: member.id,
-							avatar: member.user.avatarURL || "/img/discord-icon.png"
+							avatar: member.user.avatarURL || "/img/discord-icon.png",
+							isGlobal: true
 						};
 					})),
 					moderation: {
-						isEnabled: serverDocument.toObject().config.moderation.isEnabled
+						isEnabled: serverDocument.config.moderation.isEnabled
 					}
 				}
 			});
@@ -2031,7 +2217,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					moderation: {
-						isEnabled: serverDocument.toObject().config.moderation.isEnabled
+						isEnabled: serverDocument.config.moderation.isEnabled
 					}
 				},
 				muted: mutedMembers
@@ -2083,7 +2269,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					moderation: {
-						isEnabled: serverDocument.toObject().config.moderation.isEnabled
+						isEnabled: serverDocument.config.moderation.isEnabled
 					}
 				},
 				strikes: serverDocument.members.filter(memberDocument => {
@@ -2109,8 +2295,8 @@ module.exports = (bot, db, auth, config, winston) => {
 									avatar: creator.user.avatarURL || "/img/discord-icon.png"
 								},
 								reason: md.makeHtml(strikeDocument.reason),
-								rawDate: prettyDate(new Date(strikeDocument.timestamp)),
-								relativeDate: Math.floor((Date.now() - strikeDocument.timestamp)/86400000)
+								rawDate: moment(strikeDocument.timestamp).format(config.moment_date_format),
+								relativeDate: moment(strikeDocument.timestamp).fromNow()
 							};
 						})
 					};
@@ -2175,7 +2361,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					moderation: {
-						isEnabled: serverDocument.toObject().config.moderation.isEnabled,
+						isEnabled: serverDocument.config.moderation.isEnabled,
 						status_messages: statusMessagesData
 					}
 				}
@@ -2210,9 +2396,6 @@ module.exports = (bot, db, auth, config, winston) => {
 								serverDocument.config.moderation.status_messages[status_message][key] = req.body[status_message + "-" + key]=="on";
 								break;
 							case "enabled_channel_ids":
-								if(["message_edited_message", "message_deleted_message"].indexOf(status_message)>-1 && req.body[status_message + "-type"]=="single") {
-									break;
-								}
 								serverDocument.config.moderation.status_messages[status_message][key] = [];
 								svr.channels.forEach(ch => {
 									if(ch.type==0) {
@@ -2250,6 +2433,13 @@ module.exports = (bot, db, auth, config, winston) => {
 	// Admin console filters
 	app.get("/dashboard/management/filters", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			var filteredCommands = [];
+			for(var command in serverDocument.toObject().config.commands) {
+				var commandData = bot.getPublicCommandMetadata(command);
+				if(commandData && commandData.defaults.is_nsfw_filtered) {
+					filteredCommands.push(command);
+				}
+			}
 			res.render("pages/admin-filters.ejs", {
 				authUser: req.isAuthenticated() ? getAuthUser(req.user) : null,
 				serverData: {
@@ -2262,12 +2452,12 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					moderation: {
-						isEnabled: serverDocument.toObject().config.moderation.isEnabled,
+						isEnabled: serverDocument.config.moderation.isEnabled,
 						filters: serverDocument.toObject().config.moderation.filters
 					}
 				},
 				config: {
-					filtered_commands: "<code>" + config.filtered_commands.join("</code>, <code>") + "</code>"
+					filtered_commands: "<code>" + filteredCommands.sort().join("</code>, <code>") + "</code>"
 				}
 			});
 		});
@@ -2323,7 +2513,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				roleData: getRoleData(svr),
 				currentPage: req.path,
 				configData: {
-					message_of_the_day: serverDocument.toObject().config.message_of_the_day
+					message_of_the_day: serverDocument.config.message_of_the_day
 				}
 			});
 		});
@@ -2333,10 +2523,15 @@ module.exports = (bot, db, auth, config, winston) => {
 	});
 	app.post("/dashboard/management/message-of-the-day", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
+			var alreadyEnabled = serverDocument.config.message_of_the_day.isEnabled;
 			serverDocument.config.message_of_the_day.isEnabled = req.body["isEnabled"]=="on";
 			serverDocument.config.message_of_the_day.message_content = req.body["message_content"];
 			serverDocument.config.message_of_the_day.channel_id = req.body["channel_id"];
 			serverDocument.config.message_of_the_day.interval = parseInt(req.body["interval"]);
+
+			if(!alreadyEnabled && serverDocument.config.message_of_the_day.isEnabled) {
+				createMessageOfTheDay(bot, winston, svr, serverDocument.config.message_of_the_day);
+			}
 
 			saveAdminConsoleOptions(consolemember, svr, serverDocument, req, res);
 		});
@@ -2355,7 +2550,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				voiceChannelData: getChannelData(svr, 2),
 				currentPage: req.path,
 				configData: {
-					voicetext_channels: serverDocument.toObject().config.voicetext_channels
+					voicetext_channels: serverDocument.config.voicetext_channels
 				}
 			});
 		});
@@ -2393,17 +2588,21 @@ module.exports = (bot, db, auth, config, winston) => {
 				currentPage: req.path,
 				configData: {
 					commands: {
-						perms: serverDocument.toObject().config.commands.perms,
-						role: serverDocument.toObject().config.commands.role,
-						roleinfo: serverDocument.toObject().config.commands.roleinfo
+						perms: serverDocument.config.commands.perms,
+						role: serverDocument.config.commands.role,
+						roleinfo: serverDocument.config.commands.roleinfo
 					},
-					custom_colors: serverDocument.toObject().config.custom_colors,
-					custom_roles: serverDocument.toObject().config.custom_roles
+					custom_roles: serverDocument.config.custom_roles
 				},
 				commandDescriptions: {
-					perms: commands.public.perms.description,
-					role: commands.public.role.description,
-					roleinfo: commands.public.roleinfo.description
+					perms: bot.getPublicCommandMetadata("perms").description,
+					role: bot.getPublicCommandMetadata("role").description,
+					roleinfo: bot.getPublicCommandMetadata("roleinfo").description
+				},
+				commandCategories: {
+					perms: bot.getPublicCommandMetadata("perms").category,
+					role: bot.getPublicCommandMetadata("role").category,
+					roleinfo: bot.getPublicCommandMetadata("roleinfo").category
 				}
 			});
 		});
@@ -2415,7 +2614,6 @@ module.exports = (bot, db, auth, config, winston) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
 			parseCommandOptions(svr, serverDocument, "roleinfo", req.body);
 			parseCommandOptions(svr, serverDocument, "role", req.body);
-			serverDocument.config.custom_colors = req.body["custom_colors"]=="on";
 			serverDocument.config.custom_roles = [];
 			svr.roles.forEach(role => {
 				if(role.name!="@everyone" && role.name.indexOf("color-")!=0) {
@@ -2469,7 +2667,7 @@ module.exports = (bot, db, auth, config, winston) => {
 									results[i].levelColor = "#3273dc";
 									break;
 							}
-							results[i].timestamp = prettyDate(new Date(results[i].timestamp));
+							results[i].timestamp = moment(results[i].timestamp).format(config.moment_date_format);
 							logs.push(results[i]);
 						}
 					}
@@ -2504,7 +2702,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				},
 				currentPage: req.path,
 				configData: {
-					name_display: serverDocument.toObject().config.name_display
+					name_display: serverDocument.config.name_display
 				},
 				nameExample: bot.getName(svr, serverDocument, consolemember)
 			});
@@ -2552,7 +2750,8 @@ module.exports = (bot, db, auth, config, winston) => {
 								name: ch.name,
 								id: ch.id
 							},
-							created: prettyDate(new Date(channelDocument.poll.created_timestamp)),
+							rawCreated: moment(channelDocument.poll.created_timestamp).format(config.moment_date_format),
+							relativeCreated: moment(channelDocument.poll.created_timestamp).fromNow(),
 							creator: creator.user.username,
 							options: channelDocument.poll.options.length,
 							responses: channelDocument.poll.responses.length
@@ -2567,7 +2766,8 @@ module.exports = (bot, db, auth, config, winston) => {
 								id: ch.id
 							},
 							creator: creator.user.username,
-							expiry: Math.ceil((channelDocument.giveaway.expiry_timestamp - Date.now())/3600000),
+							rawExpiry: moment(channelDocument.giveaway.expiry_timestamp).format(config.moment_date_format),
+							relativeExpiry: Math.ceil((channelDocument.giveaway.expiry_timestamp - Date.now()) / 3600000),
 							participants: channelDocument.giveaway.participant_ids.length
 						});
 					}
@@ -2615,16 +2815,16 @@ module.exports = (bot, db, auth, config, winston) => {
 
 					switch(req.body["end-type"]) {
 						case "trivia":
-							// TODO: end trivia session
+							Trivia.end(bot, svr, serverDocument, ch, channelDocument);
 							break;
 						case "poll":
-							// TODO: end poll
+							Polls.end(serverDocument, ch, channelDocument);
 							break;
 						case "giveaway":
-							// TODO: end giveaway
+							Giveaways.end(bot, svr, serverDocument, ch, channelDocument);
 							break;
 						case "lottery":
-							// TODO: end lottery
+							Lotteries.end(db, svr, serverDocument, ch, channelDocument);
 							break;
 					}
 				}
@@ -2646,7 +2846,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				},
 				currentPage: req.path,
 				configData: {
-					public_data: serverDocument.toObject().config.public_data
+					public_data: serverDocument.config.public_data
 				}
 			});
 		});
@@ -2728,27 +2928,29 @@ module.exports = (bot, db, auth, config, winston) => {
 					state: state
 				}, (err, galleryDocument) => {
 					if(!err && galleryDocument) {
-						var extensionDocument;
-						var isUpdate = false;
-						for(var i=0; i<serverDocument.extensions.length; i++) {
-							if(serverDocument.extensions[i]._id.toString()==galleryDocument._id.toString()) {
-								extensionDocument = serverDocument.extensions[i];
-								isUpdate = true;
-								break;
-							}
+						var extensionDocument = serverDocument.extensions.id(galleryDocument._id);
+						var isUpdate = true;
+						if(!extensionDocument) {
+							extensionDocument = {};
+							isUpdate = false;
 						}
 
-						extensionDocument = galleryDocument;
+						extensionDocument.name = galleryDocument.name;
 						extensionDocument.level = "third";
-						extensionDocument.description = undefined;
-						extensionDocument.points = undefined;
-						extensionDocument.owner_id = undefined;
-						extensionDocument.featured = undefined;
-						extensionDocument.state = undefined;
+						extensionDocument.type = galleryDocument.type;
+						extensionDocument.key = galleryDocument.key;
+						extensionDocument.keywords = galleryDocument.keywords;
+						extensionDocument.case_sensitive = galleryDocument.case_sensitive;
+						extensionDocument.interval = galleryDocument.interval;
+						extensionDocument.usage_help = galleryDocument.usage_help;
+						extensionDocument.extended_help = galleryDocument.extended_help;
+						extensionDocument.updates_available = 0;
+						extensionDocument.last_updated = galleryDocument.last_updated;
 
 						if(isUpdate) {
 							io.of("/dashboard/other/extension-builder").emit("update", svr.id);
 						} else {
+							extensionDocument.admin_level = ["command", "keyword"].indexOf(galleryDocument.type)>-1 ? 0 : null;
 							extensionDocument.enabled_channel_ids = [svr.defaultChannel.id];
 							extensionDocument.store = {};
 							serverDocument.extensions.push(extensionDocument);
@@ -2818,16 +3020,11 @@ module.exports = (bot, db, auth, config, winston) => {
 	app.post("/dashboard/other/extension-builder", (req, res) => {
 		checkAuth(req, res, (consolemember, svr, serverDocument) => {
 			if(validateExtensionData(req.body)) {
-				var extensionDocument = {};
-				var isUpdate = false;
-				if(req.query.extid) {
-					for(var i=0; i<serverDocument.extensions.length; i++) {
-						if(serverDocument.extensions[i]._id==req.query.extid) {
-							extensionDocument = serverDocument.extensions[i];
-							isUpdate = true;
-							break;
-						}
-					}
+				var extensionDocument = serverDocument.extensions.id(req.query.extid);
+				var isUpdate = true;
+				if(!extensionDocument) {
+					extensionDocument = {};
+					isUpdate = false;
 				}
 				var enabled_channel_ids = [];
 				svr.channels.forEach(ch => {
@@ -2839,7 +3036,7 @@ module.exports = (bot, db, auth, config, winston) => {
 				});
 				extensionDocument.level = "third";
 				extensionDocument.enabled_channel_ids = enabled_channel_ids;
-				extensionDocument.admin_level = ["command", "keyword"].indexOf(req.body.type)>-1 ? (req.body.admin_level || 0) : null;
+				extensionDocument.admin_level = req.body[req.body.type + "-admin_level"];
 				extensionDocument = writeExtensionData(extensionDocument, req.body);
 
 				if(!isUpdate) {
@@ -2912,7 +3109,7 @@ module.exports = (bot, db, auth, config, winston) => {
 					serverCount: bot.guilds.size,
 					userCount: bot.users.size,
 					totalMessageCount: messageCount,
-					roundedUptime: Math.floor(process.uptime()/3600),
+					roundedUptime: getRoundedUptime(process.uptime()),
 					shardCount: bot.shards.size,
 					version: config.version
 				});
@@ -2953,9 +3150,12 @@ module.exports = (bot, db, auth, config, winston) => {
 				} else if(req.query.leave!=undefined) {
 					var svr = bot.guilds.get(data[parseInt(req.query.i)].id);
 					if(svr) {
-						bot.leaveGuild(svr.id);
-						req.query.q = "";
-						renderPage();
+						bot.leaveGuild(svr.id).then(() => {
+							req.query.q = "";
+							renderPage();
+						}).catch(err => {
+							res.redirect("/error");
+						});
 					} else {
 						res.redirect("/error");
 					}
@@ -3219,11 +3419,10 @@ module.exports = (bot, db, auth, config, winston) => {
 };
 
 function findQueryUser(query, list) {
-	query = query.replaceAll("#", "----");
 	var usr = list.get(query);
 	if(!usr) {
-		var usernameQuery = query.substring(0, query.lastIndexOf("----")>-1 ? query.lastIndexOf("----") : query.length);
-		var discriminatorQuery = query.indexOf("----")>-1 ? query.substring(query.lastIndexOf("----")+4) : "";
+		var usernameQuery = query.substring(0, query.lastIndexOf("#")>-1 ? query.lastIndexOf("#") : query.length);
+		var discriminatorQuery = query.indexOf("#")>-1 ? query.substring(query.lastIndexOf("#")+1) : "";
 		var usrs = list.filter(a => {
 			return (a.user || a).username==usernameQuery;
 		});
@@ -3236,19 +3435,6 @@ function findQueryUser(query, list) {
 		}
 	}
 	return usr;
-}
-
-function parseCommandOptions(svr, serverDocument, command, data) {
-	serverDocument.config.commands[command].isEnabled = data[command + "-isEnabled"]=="on";
-	serverDocument.config.commands[command].admin_level = data[command + "-admin_level"] || 0;
-	serverDocument.config.commands[command].disabled_channel_ids = [];
-	svr.channels.forEach(ch => {
-		if(ch.type==0) {
-			if(data[command + "-disabled_channel_ids-" + ch.id]==null) {
-				serverDocument.config.commands[command].disabled_channel_ids.push(ch.id);
-			}
-		}
-	});
 }
 
 function getUserList(list) {
@@ -3277,14 +3463,15 @@ function getRoleData(svr) {
 	return svr.roles.filter(role => {
 		return role.name!="@everyone" && role.name.indexOf("color-")!=0;
 	}).map(role => {
+		var color = role.color.toString(16);
 		return {
 			name: role.name,
 			id: role.id,
-			color: role.color.toString(16),
+			color: "000000".substring(0, 6 - color.length) + color,
 			position: role.position
 		};
 	}).sort((a, b) => {
-		return a.position - b.position;
+		return b.position - a.position;
 	});
 }
 
@@ -3294,6 +3481,10 @@ function getAuthUser(user) {
 		id: user.id,
 		avatar: user.avatar ? ("https://cdn.discordapp.com/avatars/" + user.id + "/" + user.avatar + ".jpg") : "/img/discord-icon.png"
 	};
+}
+
+function getRoundedUptime(uptime) {
+	return uptime>86400 ? (Math.floor(uptime/86400) + "d") : (Math.floor(uptime/3600) + "h");
 }
 
 Object.assign(Array.prototype, {

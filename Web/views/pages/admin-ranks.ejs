@@ -7,6 +7,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newRank() {
+		hide_update_modal = true;
+		
 		var newRankName = $("#new-rank-name");
 		if(newRankName.val()) {
 			newRankName.removeClass("is-danger");
@@ -57,7 +59,7 @@
 					<div class="container">
 						<article class="message is-primary">
 							<div class="message-body">
-								Ranks <strong>classify members by activity</strong> in both voice and text chat. Each rank you add will have a <strong>maximum activity score</strong> for members to have that rank before they receive the next-highest rank. Activity scores are calculated with this formula: <code>(no. messages + (minutes active on voice * 10)) / 10</code>. You can also set ranks to automatically assign a role on the server.
+								Ranks <strong>classify members by activity</strong> in both voice and text chat. Each rank you add will have a <strong>maximum activity score</strong> for members to have that rank before they receive the next-highest rank. Activity scores are calculated with this formula: <code>no. messages + minutes active on voice</code>. You can also set ranks to automatically assign a role on the server.
 							</div>
 						</article>
 					</div>

@@ -13,7 +13,7 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
 	            msg.channel.createMessage("__**" + res.body.Title + (type ? "" : (" (" + res.body.Type.charAt(0).toUpperCase() + res.body.Type.slice(1) + ")")) + "**__```" + res.body.Plot + "```**Year:** " + res.body.Year + "\n**Rated:** " + res.body.Rated + "\n**Runtime:** " + res.body.Runtime + "\n**Actors:**\n\t" + res.body.Actors.replaceAll(", ", "\n\t") + "\n**Director:** " + res.body.Director + "\n**Writer:** " + res.body.Writer + "\n**Genre(s):**\n\t" + res.body.Genre.replaceAll(", ", "\n\t") + "\n**Rating:** " + res.body.imdbRating + " out of " + res.body.imdbVotes + " votes\n**Awards:** " + res.body.Awards + "\n**Country:** " + res.body.Country + "\nhttp://www.imdb.com/title/" + res.body.imdbID + "/");
 	        } else {
 	            winston.warn("No IMDB entries found for '" + query + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-	            msg.createMessage("Nothing found in IMDB 😶🚫");
+	            msg.channel.createMessage("Nothing found in IMDB 😶🚫");
 	        }
 	    });
 	} else {

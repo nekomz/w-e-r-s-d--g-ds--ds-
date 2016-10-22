@@ -8,6 +8,8 @@
 	<script src="/js/auto-complete.min.js"></script>
 	<script>
 	function newMaintainer() {
+		hide_update_modal = true;
+		
 		var newMaintainerUser = $("#new-maintainer-user");
 		if(newMaintainerUser.val()) {
 			newMaintainerUser.removeClass("is-danger");

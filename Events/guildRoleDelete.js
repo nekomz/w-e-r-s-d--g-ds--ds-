@@ -16,7 +16,7 @@ module.exports = (bot, db, config, winston, svr, role) => {
 			for(var filter in serverDocument.toObject().config.moderation.filters) {
 				if(serverDocument.config.moderation.filters[filter].violator_role_id==role.id) {
 					updated = true;
-					serverDocument.config.moderation.filters[filter].violator_role_id = undefined;
+					serverDocument.config.moderation.filters[filter].violator_role_id = null;
 				}	
 			}
 			if(serverDocument.config.moderation.new_member_roles.indexOf(role.id)>-1) {
@@ -26,7 +26,7 @@ module.exports = (bot, db, config, winston, svr, role) => {
 			for(var i=0; i<serverDocument.config.ranks_list.length; i++) {
 				if(serverDocument.config.ranks_list[i].role_id==role.id) {
 					updated = true;
-					serverDocument.config.ranks_list[i].role_id = undefined;
+					serverDocument.config.ranks_list[i].role_id = null;
 				}
 			}
 

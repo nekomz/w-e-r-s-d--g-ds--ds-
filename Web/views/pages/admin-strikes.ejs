@@ -9,6 +9,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newStrike(member) {
+		hide_update_modal = true;
+		
 		var newStrikeMember = $("#new-strike-member");
 		if(!member) {
 			if(newStrikeMember.val()) {

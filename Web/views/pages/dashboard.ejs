@@ -54,7 +54,7 @@
 					<div class="column is-half is-offset-one-quarter">
 						<% for(var i=0; i<serverData.length; i++) { %>
 							<% if(!serverData[i].botJoined) { %>
-								<a class="media" target="_blank" href="<%= rawJoinLink + '&guild_id=' + serverData[i].id %>">
+								<a class="media modal-button" data-target="#post-add-modal" target="_blank" href="<%= rawJoinLink + '&guild_id=' + serverData[i].id %>">
 							<% } else if(!serverData[i].isAdmin) { %>
 								<a class="media modal-button" data-target="#not-admin-modal">
 							<% } else { %>
@@ -79,19 +79,6 @@
 						<% } %>
 					</div>
 				</div>
-				<div id="not-admin-modal" class="modal">
-					<div class="modal-background"></div>
-					<div class="modal-container">
-						<div class="modal-content">
-							<div class="box">
-								<h4 class="title is-4">
-									<strong>You do not have permission to access the admin console for that server.</strong> Ask the owner of the server or other moderators to give you access to the admin console (level 3 admin).
-								</h4>
-							</div>
-						</div>
-					</div>
-					<button class="modal-close"></button>
-				</div>
 			</div>
 		</div>
 		<div class="hero-foot">
@@ -103,7 +90,7 @@
                     <span>Refresh</span>
                 </a>
                 &nbsp;
-				<a class="button is-white is-outlined" target="_blank" href="/wiki?page=Configuration">
+				<a class="button is-white is-outlined" target="_blank" href="/wiki/Configuration">
                     <span class="icon">
                         <i class="fa fa-question-circle"></i>
                     </span>
@@ -120,6 +107,33 @@
 			</div>
 		</div>
 	</section>
+
+	<div id="not-admin-modal" class="modal">
+		<div class="modal-background"></div>
+		<div class="modal-container">
+			<div class="modal-content">
+				<div class="box">
+					<h4 class="title is-4">
+						<strong>You do not have permission to access the admin console for that server.</strong> Ask the owner of the server or other moderators to give you access to the admin console (level 3 admin).
+					</h4>
+				</div>
+			</div>
+		</div>
+		<button class="modal-close"></button>
+	</div>
+	<div id="post-add-modal" class="modal">
+		<div class="modal-background"></div>
+		<div class="modal-container">
+			<div class="modal-content">
+				<div class="box">
+					<h4 class="title is-4">
+						Make sure to <strong><a href="/dashboard">refresh</a></strong> after adding AwesomeBot.
+					</h4>
+				</div>
+			</div>
+		</div>
+		<button class="modal-close"></button>
+	</div>
 
 	<% include ../partials/footer %>
 	<% include ../partials/scroll-top-button %>

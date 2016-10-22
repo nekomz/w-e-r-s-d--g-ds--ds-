@@ -7,7 +7,9 @@ module.exports = (bot, db, config, winston, member, ch) => {
 			if(!err && serverDocument) {
 				// Remove member from voicetext channel if necessary
 				if(serverDocument.config.voicetext_channels.indexOf(ch.id)>-1) {
-		            var channel = ch.guild.channels.find("name", ch.name.replaceAll(" ", "").toLowerCase() + "-voicetext");
+		            var channel = ch.guild.channels.find(a => {
+		            	return a.name==(ch.name.replaceAll(" ", "").toLowerCase() + "-voicetext");
+	            	});
 		            if(channel) {
 		                channel.editPermission(member.id, null, 3072, "member").then().catch(err => {
 	                    	winston.error("Failed to remove member '" + member.user.username + "' from voicetext channel '" + channel.name + "' on server '" + ch.guild.name + "'", {svrid: ch.guild.id, chid: channel.id, usrid: member.id}, err);

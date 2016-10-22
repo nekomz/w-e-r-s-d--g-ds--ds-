@@ -14,29 +14,32 @@ module.exports = new mongoose.Schema({
 		last_message_content: String
 	})],
 	trivia: {
-		isOngoing: {type: Boolean, default: false, required: true},
-		set: {type: String, default: "default"},
-		current_answer: String,
+		isOngoing: {type: Boolean, default: false},
+		set_id: String,
 		past_questions: [String],
-		question_attempts: {type: Number, default: 0, min: 0},
 		score: {type: Number, default: 0, min: 0},
-		max_score: {type: Number, default: 0, min: 0},
 		responders: [new mongoose.Schema({
 			_id: String,
 			score: {type: Number, default: 0, min: 0}
-		})]
+		})],
+		current_question: {
+			answer: String,
+			attempts: {type: Number, default: 0}
+		}
 	},
 	poll: {
-		isOngoing: {type: Boolean, default: false, required: true},
+		isOngoing: {type: Boolean, default: false},
 		created_timestamp: Date,
 		creator_id: String,
 		title: String,
 		options: [String],
-		responder_ids: [String],
-		responses: [Number]
+		responses: [new mongoose.Schema({
+			_id: String,
+			vote: {type: Number, min: 0}
+		})]
 	},
 	giveaway: {
-		isOngoing: {type: Boolean, default: false, required: true},
+		isOngoing: {type: Boolean, default: false},
 		expiry_timestamp: Date,
 		creator_id: String,
 		title: String,
@@ -44,7 +47,8 @@ module.exports = new mongoose.Schema({
 		participant_ids: [String]
 	},
 	lottery: {
-		isOngoing: {type: Boolean, default: false, required: true},
+		isOngoing: {type: Boolean, default: false},
+		expiry_timestamp: Date,
 		creator_id: String,
 		participant_ids: [String]
 	}

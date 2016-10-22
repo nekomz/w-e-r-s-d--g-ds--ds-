@@ -57,11 +57,11 @@ module.exports = (bot, db, config, winston, msg) => {
                 }
 
                 // Send message_deleted_message if necessary
-		        if(serverDocument.config.moderation.isEnabled && serverDocument.config.moderation.status_messages.message_deleted_message.isEnabled && !channelDocument.isMessageDeletedDisabled) {
+		        if(serverDocument.config.moderation.isEnabled && serverDocument.config.moderation.status_messages.message_deleted_message.isEnabled && serverDocument.config.moderation.status_messages.message_deleted_message.enabled_channel_ids.indexOf(msg.channel.id)>-1 && !channelDocument.isMessageDeletedDisabled) {
 		            winston.info("Message by member '" + msg.author.username + "' on server '" + msg.guild.name + "' deleted", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 
 		            // Send message in different channel
-                    if(serverDocument.config.moderation.status_messages.message_deleted_message.channel_id) {
+                    if(serverDocument.config.moderation.status_messages.message_deleted_message.type=="single" && serverDocument.config.moderation.status_messages.message_deleted_message.channel_id) {
                     	var ch = msg.guild.channels.get(serverDocument.config.moderation.status_messages.message_deleted_message.channel_id);
                     	if(ch) {
                     		var targetChannelDocument = serverDocument.channels.id(ch.id);
@@ -70,7 +70,7 @@ module.exports = (bot, db, config, winston, msg) => {
     						}
                     	}
                     // Send message in same channel
-                	} else if(serverDocument.config.moderation.status_messages.message_deleted_message.enabled_channel_ids.indexOf(msg.channel.id)>-1) {
+                	} else if(serverDocument.config.moderation.status_messages.message_deleted_message.type=="msg") {
 						if(!channelDocument || channelDocument.bot_enabled) {
 							msg.channel.createMessage("Message by **@" + bot.getName(msg.guild, serverDocument, msg.member) + "** deleted:\n```" + msg.cleanContent + "```", {disable_everyone: true});
 						}

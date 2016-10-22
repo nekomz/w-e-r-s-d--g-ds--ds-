@@ -83,7 +83,7 @@ $.getJSON("/userlist", function(data) {
 									<span><strong><%= data.userProfile.mutualServerCount %></strong> server<%= data.userProfile.mutualServerCount==1 ? "" : "s" %> with AwesomeBot</span>
 								</h4>
 
-								<h4 class="title is-3">
+								<h3 class="title is-3">
 									<% if(data.userProfile.isAfk) { %>
 										<% if(data.userProfile.afkMessage) { %>
 											<span class="modal-button" data-target="#afk-message-modal">
@@ -136,20 +136,22 @@ $.getJSON("/userlist", function(data) {
 											<button class="modal-close"></button>
 										</div>
 									<% } %>
-								</h4>
+								</h3>
 
 								<% if(data.userProfile.profileFields) { %>
-									<% for(var key in data.userProfile.profileFields) { %>
-										<span><%= key.charAt(0).toUpperCase() + key.slice(1) %>: <%= data.userProfile.profileFields[key] %></span>
-										<br>
-									<% } %>
+									<h4 class="title is-4">
+										<% for(var key in data.userProfile.profileFields) { %>
+											<span><%= key.charAt(0).toUpperCase() + key.slice(1) %>: <%- data.userProfile.profileFields[key] %></span>
+											<br>
+										<% } %>
+									</h4>
 								<% } %>
 							</div>
 			    		</div>
 					</article>
 				</div>
 				<script>
-				document.getElementById("frame").style.backgroundImage = "url('<%= data.userProfile.backgroundImage %>')";document.getElementById("frame").style.paddingBottom = "200px"
+				document.getElementById("frame").style.backgroundImage = "url('<%= data.userProfile.backgroundImage %>')";document.getElementById("frame").style.backgroundSize = "cover";document.getElementById("frame").style.paddingBottom = "200px"
 				</script>
 				<% if(data.userProfile.mutualServers) { %>
 					<div id="mutual-servers-modal" class="modal">
@@ -204,21 +206,9 @@ $.getJSON("/userlist", function(data) {
 								</span>
 								<span><strong><%= data.reminderCount %></strong> reminder<%= data.reminderCount==1 ? "" : "s" %> set</span>
 							</h2>
-							<h2 class="title">
-								<span class="icon is-medium">
-									<i class="fa fa-info-circle"></i>
-								</span>
-								<span><strong><%= data.profileFieldCount %></strong> profile field<%= data.profileFieldCount==1 ? "" : "s" %></span>
-							</h2>
-							<h2 class="title">
-								<span class="icon is-medium">
-									<i class="fa fa-keyboard-o"></i>
-								</span>
-								<span><strong><%= data.afkUserCount %></strong> user<%= data.afkUserCount==1 ? "" : "s" %> AFK right now</span>
-							</h2>
 						</div>
 				    	<div class="media-right">
-				    		<img class="image profile-image" style="width: 256px;border-radius: 100%;" src="/img/profile.png">
+				    		<img class="image profile-image" style="width: 132px;border-radius: 100%;" src="/img/profile.png">
 			    		</div>
 					</article>
 				</div>

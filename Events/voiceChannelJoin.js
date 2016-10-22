@@ -15,10 +15,12 @@ module.exports = (bot, db, config, winston, member, ch) => {
 		            };
 
 		            // Create voicetext channel if necessary
-		            var channel = ch.guild.channels.find("name", ch.name.replaceAll(" ", "").toLowerCase() + "-voicetext");
+		            var channel = ch.guild.channels.find(a => {
+		            	return a.name==(ch.name.replaceAll(" ", "").toLowerCase() + "-voicetext");
+	            	});
 		            if(!channel) {
 		                ch.guild.createChannel(ch.name.replaceAll(" ", "").toLowerCase() + "-voicetext").then(channel => {
-		                    channel.overwritePermissions(ch.guild.id, null, 3072, "role").then(() => {
+		                    channel.editPermission(ch.guild.id, null, 3072, "role").then(() => {
 		                    	addToVoicetext(channel);
 		                    }).catch(err => {
 	                        	winston.error("Failed to create voicetext channel for '" + ch.name + "' on server '" + ch.guild.name + "'", {svrid: ch.guild.id, chid: ch.id}, err);

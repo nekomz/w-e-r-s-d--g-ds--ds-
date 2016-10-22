@@ -13,7 +13,7 @@ module.exports = (bot, winston, svr, feedDocument, callback) => {
                         if(articles[i].link==feedDocument.streaming.last_article_title) {
                             adding = true;
                         } else if(adding) {
-                            info.push((articles[i].published instanceof Date ? ("`" + moment(articles[i].published).fromNow() + "`") : "") + " **"  + articles[i].title + "**\n" + articles[i].link + "\n");
+                            info.push(moment(articles[i].published).fromNow() + ": **"  + articles[i].title + "**\n<" + articles[i].link + ">");
                         }
                     }
                 };

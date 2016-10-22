@@ -7,6 +7,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newRss() {
+		hide_update_modal = true;
+		
 		var newRssUrl = $("#new-rss-url");
 		if(newRssUrl.val()) {
 			newRssUrl.removeClass("is-danger");
@@ -79,7 +81,7 @@
 					<br>
 					<div class="container">
 						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
-							<% var commandData = configData.commands.rss;commandData.name = "rss";commandData.description = commandDescriptions.rss; %>
+							<% var commandData = configData.commands.rss;commandData.name = "rss";commandData.description = commandDescriptions.rss;commandData.category = commandCategories.rss; %>
 							<% include ../partials/admin-command-item %>
 							<div style="overflow-x: scroll;">
 								<% if(configData.rss_feeds.length>0) { %>

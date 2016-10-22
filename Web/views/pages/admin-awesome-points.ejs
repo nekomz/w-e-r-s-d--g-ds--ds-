@@ -31,14 +31,10 @@
 					<br>
 					<div class="container">
 						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
-							<% var commandData = configData.commands.points;commandData.name = "points";commandData.description = commandDescriptions.points; %>
+							<% var commandData = configData.commands.points;commandData.name = "points";commandData.description = commandDescriptions.points;commandData.category = commandCategories.points; %>
 							<% include ../partials/admin-command-item %>
-							<p class="control">
-								<label class="checkbox">
-								<input name="points_lottery" type="checkbox" <%= configData.points_lottery ? "checked" : "" %>>
-									Hourly lottery in <code>points</code> command
-								</label>
-							</p>
+							<% var commandData = configData.commands.lottery;commandData.name = "lottery";commandData.description = commandDescriptions.lottery;commandData.category = commandCategories.lottery; %>
+							<% include ../partials/admin-command-item %>
 							<br>
 							<% var formButtonsUnsaved = false; %>
 							<% include ../partials/form-buttons %>

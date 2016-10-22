@@ -16,13 +16,14 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
             return;
         }
 
-        msg.channel.createMessage("Are you sure you want to clear all tags?");
-        bot.awaitMessage(msg.channel.id, msg.author.id, message => true, message => {
-            if (this.confirmAction(message)) {
-                serverDocument.config.tags.list = [];
-                winston.info("Cleared all tags", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-                msg.channel.createMessage("All tags cleared 🗑");
-            }
+        msg.channel.createMessage("Are you sure you want to clear all tags?").then(() => {
+            bot.awaitMessage(msg.channel.id, msg.author.id, message => {
+                if (this.confirmAction(message)) {
+                    serverDocument.config.tags.list = [];
+                    winston.info("Cleared all tags", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+                    msg.channel.createMessage("All tags cleared 🗑");
+                }
+            });
         });
     };
 
@@ -64,14 +65,16 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
                 this.loadDefaults();
                 break;
             default:
-                if (this.value == "") {
-                    // deleting this with empty value?
+                // deleting with empty or "." (backwards-compatibility)
+                if (this.value == "" || this.value == ".") {
                     if (this.hasArgs) {
                         this.delete();
+                        return;
                     }
-                    else {
-                        this.show();
-                    }
+                }
+
+                if (this.value == "") {
+                    this.show();
                 }
                 else {
                     this.save();
@@ -140,7 +143,7 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
                 isCommand: this.isCommand,
                 isLocked: this.isLocked
             });
-            msg.channel.createMessage("New tag `" + this.tag + "` created 😃");
+            msg.channel.createMessage("New " + (this.isCommand ? "command " : "") + "tag `" + this.tag + "` created 😃");
         }
         else {
             // locked and require admin?
@@ -149,14 +152,24 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
                 return;
             }
 
-            msg.channel.createMessage("Tag `" + this.tag + "` already exists. Are you sure you want to overwrite it?");
-            bot.awaitMessage(msg.channel.id, msg.author.id, message => true, message => {
-                if (this.confirmAction(message)) {
-                    tag_data.content = this.value;
-                    tag_data.isCommand = this.isCommand;
-                    tag_data.isLocked = this.isLocked;
-                    msg.channel.createMessage("Tag `" + this.tag + "` updated ✏️");
-                }
+            msg.channel.createMessage("Tag `" + this.tag + "` already exists. Are you sure you want to overwrite it?").then(() => {
+                bot.awaitMessage(msg.channel.id, msg.author.id, message => {
+                    if (this.confirmAction(message)) {
+                        tag_data.content = this.value;
+                        tag_data.isCommand = this.isCommand;
+                        tag_data.isLocked = this.isLocked;
+                        serverDocument.save(err => {
+                            if (err) {
+                                winston.error("Failed to update tag `" + this.tag + "`", { svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id, tag_content: this.value });
+                                msg.channel.createMessage("Failed to update tag `" + this.tag + "`");
+                            }
+                            else {
+                                winston.info("Updated tag `" + this.tag + "`", { svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id, tag_content: this.value });
+                                msg.channel.createMessage("Tag `" + this.tag + "` updated ✏️");
+                            }
+                        });
+                    }
+                });
             });
         }
     };
@@ -167,7 +180,7 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
             msg.channel.createMessage(tag_data.content);
         }
         else {
-            msg.channel.createMessage("Tag `" + suffix + "` does not exist. Use `" + bot.getCommandPrefix(msg.guild, serverDocument) + commandData.name + "tag " + suffix + "|<content>` + to create it.");
+            msg.channel.createMessage("Tag `" + suffix + "` does not exist. Use `" + bot.getCommandPrefix(msg.guild, serverDocument) + commandData.name + " " + suffix + "|<content>` to create it.");
         }
     };
 

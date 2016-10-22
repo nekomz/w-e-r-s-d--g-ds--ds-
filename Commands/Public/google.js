@@ -44,7 +44,7 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
 								i--;
 								continue;
 							}
-							results.push("__" + res.links[i].title + "__\n" + res.links[i].description + "\n<" + res.links[i].href + ">");
+							results.push("**" + res.links[i].title + "**\n" + res.links[i].description + "\n<" + res.links[i].href + ">");
 						}
 						bot.sendArray(msg.channel, results);
 					}

@@ -1,4 +1,8 @@
+const default_rss_feeds = require("./../Configuration/rss_feeds.json");
 const default_tags = require("./../Configuration/tags.json");
+const default_ranks_list = require("./../Configuration/ranks.json");
+const default_status_messages = require("./../Configuration/status_messages.json");
+const default_tag_reaction_messages = require("./../Configuration/tag_reaction.json");
 
 // Set defaults for new server document
 module.exports = (bot, svr, serverDocument) => {
@@ -13,7 +17,7 @@ module.exports = (bot, svr, serverDocument) => {
 		});
 	}
 	svr.roles.forEach(role => {
-		if(role.name!="@everyone" && role.permissions.has("manageGuild") && !serverDocument.config.admins.id(role.id)) {
+		if(role.name!="@everyone" && !role.managed && role.permissions.has("manageGuild") && !serverDocument.config.admins.id(role.id)) {
 			serverDocument.config.admins.push({
 				_id: role.id,
 				level: 3
@@ -22,66 +26,24 @@ module.exports = (bot, svr, serverDocument) => {
 	});
 
 	// Default RSS feed
-	serverDocument.config.rss_feeds.push({
-		_id: "gnews",
-		url: "https://news.google.com/news?ned=us&topic=h&output=rss"
-	});
+	serverDocument.config.rss_feeds = default_rss_feeds;
 
 	// Default tag list
 	serverDocument.config.tags.list = default_tags;
 
 	// Default ranks list
-	serverDocument.config.ranks_list.push({
-        _id: "Pro Lurker",
-        max_score: 5
-    },
-    {
-        _id: "Learning Lurker",
-        max_score: 10
-    },
-    {
-        _id: "Bad Lurker",
-        max_score: 20
-    },
-    {
-        _id: "Mostly Inactive",
-        max_score: 40
-    },
-    {
-        _id: "In Between",
-        max_score: 75
-    },
-    {
-        _id: "Kinda Active",
-        max_score: 100
-    },
-    {
-        _id: "Pretty Active",
-        max_score: 200
-    },
-    {
-        _id: "Super Active",
-        max_score: 400
-    },
-    {
-        _id: "Pro Member",
-        max_score: 750
-    },
-    {
-        _id: "Almost a Spammer",
-        max_score: 1000
-    });
+	serverDocument.config.ranks_list = default_ranks_list;
 
 	// Default member messages
-	serverDocument.config.moderation.status_messages.new_member_message.messages.push("@user Welcome to our little corner of hell!", "@user has joined the server.", "@user You're gonna have a jolly good time here!", "@user is new here.", "@user is here, everybody!", "@user sends his/her regards.", "@user, welcome to the server!", "@user is our next victim...", "Hello @user!", "Please welcome our newest member, @user");
-	serverDocument.config.moderation.status_messages.member_online_message.messages.push("@user is now online!", "Welcome back @user!");
-	serverDocument.config.moderation.status_messages.member_offline_message.messages.push("@user is gone (for now)", "@user has gone offline.");
-	serverDocument.config.moderation.status_messages.member_removed_message.messages.push("@user has left us :slight_frown:", "Goodbye @user", "@user Come back!", "@user is gone *cries*", "@user has left the server", "RIP @user", "Uh-oh, @user went away", "Please convince @user to come back!");
-	serverDocument.config.moderation.status_messages.member_banned_message.messages.push("@user has been banned");
-	serverDocument.config.moderation.status_messages.member_unbanned_message.messages.push("@user has been unbanned");
+	serverDocument.config.moderation.status_messages.new_member_message.messages = default_status_messages.new_member_message;
+	serverDocument.config.moderation.status_messages.member_online_message.messages = default_status_messages.member_online_message;
+	serverDocument.config.moderation.status_messages.member_offline_message.messages = default_status_messages.member_offline_message;
+	serverDocument.config.moderation.status_messages.member_removed_message.messages = default_status_messages.member_removed_message;
+	serverDocument.config.moderation.status_messages.member_banned_message.messages = default_status_messages.member_banned_message;
+	serverDocument.config.moderation.status_messages.member_unbanned_message.messages = default_status_messages.member_unbanned_message;
 
 	// Default tag reactions
-	serverDocument.config.tag_reaction.messages.push("@user you called?", "Yo @user wassup");
+	serverDocument.config.tag_reaction.messages = default_tag_reaction_messages;
 
 	// Send message to server owner about AwesomeBot
 	// TODO: uncomment this after testing

@@ -7,6 +7,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newReaction() {
+		hide_update_modal = true;
+		
 		var newReactionMessage = $("#new-reaction-message");
 		if(newReactionMessage.val()) {
 			newReactionMessage.removeClass("is-danger");

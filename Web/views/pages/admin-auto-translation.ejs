@@ -9,6 +9,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newTranslated() {
+		hide_update_modal = true;
+		
 		var newTranslatedMember = $("#new-translated-member");
 		if(newTranslatedMember.val()) {
 			newTranslatedMember.removeClass("is-danger");

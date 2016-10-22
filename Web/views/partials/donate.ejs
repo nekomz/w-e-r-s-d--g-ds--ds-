@@ -8,11 +8,6 @@ function hideDonate() {
         $("#nav-donate").toggle(186);
     }
 }
-$(document).ready(function() {
-    if(localStorage.getItem("donate")=="hide") {
-        $("#nav-donate").toggle(186);
-    }
-});
 </script>
 
 <div id="donate-modal" class="modal">
@@ -71,6 +66,19 @@ $(document).ready(function() {
                     </div>
                     <div class="media-content">
                         <p class="title is-3">Cystic Fibrosis Foundation <span class="tag is-dark">USA</span></p>
+                    </div>
+                    <div class="media-right">
+                        <span class="icon is-medium">
+                            <i class="fa fa-chevron-right"></i>
+                        </span>
+                    </div>
+                </a>
+                <a class="media" href="http://preventcancer.org/donate">
+                    <div class="media-left">
+                        <img class="image is-32x32" src="http://nvhr.org/sites/default/files/.users/u32/prevent%20cancer%20logo.jpg">
+                    </div>
+                    <div class="media-content">
+                        <p class="title is-3">Prevent Cancer Foundation <span class="tag is-dark">USA</span></p>
                     </div>
                     <div class="media-right">
                         <span class="icon is-medium">

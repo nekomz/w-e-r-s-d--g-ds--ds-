@@ -2,7 +2,7 @@
     <nav class="nav">
         <div class="container">
             <div class="nav-left">
-                <a class="nav-item is-brand title is-5 is-active" href="http://add.awesomebot.xyz" target="_blank" style="font-family: Montserrat;">
+                <a class="nav-item is-brand title is-5 is-active" href="/" style="font-family: Montserrat;">
                     <img src="/img/icon.png" style="border-radius: 100%;">
                     &nbsp;
                     AwesomeBot
@@ -51,6 +51,11 @@
                     &nbsp;
                     <span>Donate</span>
                 </a>
+                <script>
+                if(localStorage.getItem("donate")=="hide") {
+                    $("#nav-donate").toggle();
+                }
+                </script>
                 
                 <% if(authUser) { %>
                     <a id="nav-dashboard" class="nav-item is-active" href="/dashboard" title="Go to dashboard">
@@ -60,7 +65,7 @@
                     </a>
                 <% } else { %>
                     <p class="nav-item control has-addons">
-                        <a class="button is-white is-outlined" href="http://add.awesomebot.xyz">
+                        <a class="button is-white is-outlined" href="/add">
                             <span class="icon is-small">
                                 <i class="fa fa-plus"></i>
                             </span>

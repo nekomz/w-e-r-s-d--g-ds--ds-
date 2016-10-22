@@ -164,7 +164,7 @@ function publishExtension() {
 			<span>Download</span>
 		</a>
 		&nbsp;
-		<a class="button is-small" href="/wiki?page=Extensions#javascriptapi" target="_blank">
+		<a class="button is-small" href="/wiki/Extensions#javascriptapi" target="_blank">
 			<span class="icon is-small">
 		        <i class="fa fa-book"></i>
 		    </span>
@@ -192,7 +192,7 @@ function publishExtension() {
 		</a>
 		<br>
     <% } else if(extensionData._id) { %>
-    	<a class="button is-info" href="/extensions/<%= extensionData.state %>?q=<%= extensionData._id %>" target="_blank">
+    	<a class="button is-info" href="/extensions/<%= extensionData.state %>?id=<%= extensionData._id %>" target="_blank">
 			<span class="icon is-small">
 				<i class="fa fa-info"></i>
 			</span>

@@ -2,6 +2,8 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<meta property="og:title" content="AwesomeBot">
+<meta property="og:image" content="/img/icon.png">
 <meta name="description" content="AwesomeBot is a fun, easy-to-use, feature-packed bot designed to increase activity on your Discord server">
 <meta name="author" content="BitQuote">
 <link rel="shortcut icon" type="image/png" href="/img/icon.png">
@@ -11,6 +13,14 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css">
 <link href="/fonts/icon-discord.css" rel="stylesheet">
 <link rel="stylesheet" href="/css/bulma.css">
+
+<style>
+@media screen and (max-width: 768px) {
+	.modal-content .box {
+		margin-right: 40px;
+	}
+}
+</style>
 
 <script src="/js/jquery-2.2.0.min.js"></script>
 <script src="/js/bulma.js"></script>
@@ -44,21 +54,30 @@ $(window).scroll(function() {
 	}
 });
 
-$("#scroll-top-button").click(function() {
-	$("html, body").animate({
-		scrollTop: 0
-	}, 172);
-	return false;
-});
-
-var kkeys = [];
+var keys = [];
 var konami = "38,38,40,40,37,39,37,39,66,65";
+var dolphin = "68,69,76,73,71,72,84,69,68,32,68,79,76,80,72,73,78";
 window.addEventListener("keydown", function(e) {
-	kkeys.push(e.keyCode);
-	if(kkeys.toString().indexOf(konami)>-1) {
+	if(e.keyCode!=16) {
+		keys.push(e.keyCode);
+	}
+	if(keys.toString().indexOf(konami)>-1) {
+		keys = [];
 		document.body.innerHTML = document.body.innerHTML.replace(/AwesomeBot/g,"TacoBot");
 		document.body.innerHTML = document.body.innerHTML.split("/img/icon.png").join("/img/tinytaco.jpg");
 		document.getElementById("header").style.backgroundImage = "url('/img/header-bg-taco.jpg')";
+	}
+	if(keys.toString().indexOf(dolphin)>-1) {
+		keys = [];
+		$('*').contents().filter(function() {
+		    return this.nodeType == Node.TEXT_NODE && this.nodeValue.trim() != '';
+		}).each(function() {
+			var info = "";
+			for(var i=0; i<this.nodeValue.length; i++) {
+				info += "🐬";
+			}
+		    this.nodeValue = info;
+		});
 	}
 }, true);
 </script>

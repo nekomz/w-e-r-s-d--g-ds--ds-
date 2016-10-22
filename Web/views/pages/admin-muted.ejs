@@ -9,6 +9,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newMute() {
+		hide_update_modal = true;
+		
 		var newMutedMember = $("#new-mute-member");
 		if(newMutedMember.val()) {
 			newMutedMember.removeClass("is-danger");
@@ -54,7 +56,7 @@
 						<article class="message is-primary">
 							<div class="message-body">
 								<div class="content">
-									Muted users <strong>cannot send text messages</strong> in a channel. Users may be automatically muted for filter violations and via the <code>mute</code> command.
+									Muted users <strong>cannot send text messages</strong> in a channel. Users may be automatically muted for filter violations and via the <code>mute</code> command. Please note that it might take a few seconds to minutes for this page to update after saving.
 								</div>
 							</div>
 						</article>
@@ -70,7 +72,6 @@
 												<th></th>
 												<th>Username</th>
 												<th>ID</th>
-												<th>Channels</th>
 												<th></th>
 											</tr>
 										</thead>
@@ -87,15 +88,12 @@
 														<%= muted[i].id %>
 													</td>
 													<td>
-														<% for(var j=0; j<channelData.length; j++) { %>
-															<label class="checkbox">
-															<input name="muted-<%= muted[i].id %>-<%= channelData[j].id %>" type="checkbox" <%= muted[i].channels.indexOf(channelData[j].id)>-1 ? "checked" : "" %>>
-																#<%= channelData[j].name %>
-															</label>
-															<br>
-														<% } %>
-													</td>
-													<td>
+														<a class="button is-small is-primary modal-button" data-target="#muted-<%= i %>-channels-modal">
+															<span class="icon is-small">
+																<i class="fa fa-hashtag"></i>
+															</span>
+															<span>Channels</span>
+														</a>
 														<button class="button is-small is-danger" name="muted-<%= muted[i].id %>-removed" onclick="saveFormState();">
 															<span>Remove</span>
 															<span class="icon is-small">
@@ -104,6 +102,26 @@
 														</button>
 													</td>
 												</tr>
+												<div id="muted-<%= i %>-channels-modal" class="modal">
+													<div class="modal-background"></div>
+													<div class="modal-container">
+														<div class="modal-content">
+															<div class="box">
+																<h4 class="subtitle is-4">
+																	Muted channels for <strong>@<%= muted[i].name %></strong>
+																</h4>
+																<% for(var j=0; j<channelData.length; j++) { %>
+																	<label class="checkbox">
+																	<input name="muted-<%= muted[i].id %>-<%= channelData[j].id %>" type="checkbox" <%= muted[i].channels.indexOf(channelData[j].id)>-1 ? "checked" : "" %>>
+																		#<%= channelData[j].name %>
+																	</label>
+																	<br>
+																<% } %>
+															</div>
+														</div>
+													</div>
+													<a class="modal-close"></a>
+												</div>
 											<% } %>
 										</tbody>
 									</table>

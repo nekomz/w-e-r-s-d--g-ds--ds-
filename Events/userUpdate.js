@@ -15,9 +15,9 @@ module.exports = (bot, db, config, winston, usr, oldusrdata) => {
 							if(ch) {
 								var channelDocument = serverDocument.channels.id(ch.id);
 								if(!channelDocument || channelDocument.bot_enabled) {
-									ch.createMessage("**@" + bot.getName(svr, serverDocument, svr.member({
+									ch.createMessage("**@" + bot.getName(svr, serverDocument, {
 										user: oldusrdata
-									}), true) + "** is now **@" + bot.getName(svr, serverDocument, member, true) + "**");
+									}, true) + "** is now **@" + bot.getName(svr, serverDocument, member, true) + "**");
 								}
 							}
 						}

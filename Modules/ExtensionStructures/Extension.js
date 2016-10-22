@@ -17,6 +17,7 @@ module.exports = class Extension {
             } else {
                 extensionDocument.store[key] = value;
                 this.store = extensionDocument.store;
+                serverDocument.markModified("extensions");
                 serverDocument.save(err => {
                 	if(err) {
                 		winston.error("Failed to save server data for extension '" + extensionDocument._id + "'", {svrid: svr.id}, err);
@@ -29,6 +30,7 @@ module.exports = class Extension {
 	    this.deleteStore = (key, callback) => {
             delete extensionDocument.store[key];
             this.store = extensionDocument.store;
+            serverDocument.markModified("extensions");
             serverDocument.save(err => {
         		if(err) {
         			winston.error("Failed to save server data for extension '" + extensionDocument._id + "'", {svrid: svr.id}, err);

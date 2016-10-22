@@ -17,19 +17,18 @@ module.exports = {
 	command_prefix: {type: String, default: "@mention", maxlength: 10, minlength: 1},
 	commands: getCommands(),
 	count_data: [new mongoose.Schema({
-		_id: {type: String, required: true},
+		_id: {type: String, required: true, lowercase: true},
 		value: {type: Number, default: 0, min: 0}
 	})],
 	countdown_data: [new mongoose.Schema({
 		_id: {type: String, required: true},
-		name: {type: String, required: true},
+		channel_id: {type: String, required: true},
 		expiry_timestamp: {type: Date, required: true}
 	})],
 	custom_api_keys: {
 		google_api_key: String,
 		google_cse_id: String
 	},
-	custom_colors: {type: Boolean, default: false},
 	custom_roles: [String],
 	delete_command_messages: {type: Boolean, default: false},
 	list_data: [new mongoose.Schema({
@@ -52,6 +51,14 @@ module.exports = {
 				message_sensitivity: {type: Number, default: 5, enum: [3, 5, 10]},
 				action: {type: String, default: "mute", enum: ["none", "block", "mute", "kick", "ban"]},
 				delete_messages: {type: Boolean, default: true},
+				violator_role_id: String
+			},
+			mention_filter: {
+				isEnabled: {type: Boolean, default: false},
+				disabled_channel_ids: [String],
+				mention_sensitivity: {type: Number, default: 3, min: 1, max: 25},
+				action: {type: String, default: "mute", enum: ["none", "block", "mute", "kick", "ban"]},
+				delete_message: {type: Boolean, default: true},
 				violator_role_id: String
 			},
 			nsfw_filter: {
@@ -149,11 +156,13 @@ module.exports = {
 			},
 			message_edited_message: {
 				isEnabled: {type: Boolean, default: false},
+				type: {type: String, default: "msg", enum: ["msg", "single"]},
 				channel_id: String,
 				enabled_channel_ids: [String]
 			},
 			message_deleted_message: {
 				isEnabled: {type: Boolean, default: false},
+				type: {type: String, default: "msg", enum: ["msg", "single"]},
 				channel_id: String,
 				enabled_channel_ids: [String]
 			}
@@ -178,7 +187,6 @@ module.exports = {
 		use_nick: {type: Boolean, default: true},
 		show_discriminator: {type: Boolean, default: false}
 	},
-	points_lottery: {type: Boolean, default: false},
 	public_data: {
 		isShown: {type: Boolean, default: true},
 		server_listing: {
@@ -195,7 +203,7 @@ module.exports = {
 	})],
 	room_data: [new mongoose.Schema({
 		_id: {type: String, required: true},
-		timer: Number
+		created_timestamp: {type: Date, default: Date.now}
 	})],
 	rss_feeds: [new mongoose.Schema({
 		_id: {type: String, required: true, lowercase: true, maxlength: 50},

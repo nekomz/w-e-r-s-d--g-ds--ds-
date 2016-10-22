@@ -25,7 +25,7 @@
 						<article class="message is-primary">
 							<div class="message-body">
 								<div class="content">
-									AwesomeBot provides <strong>filters</strong> for <strong>spam</strong>, <strong>NSFW content</strong>, and <strong>custom words</strong>. You can change which channels the filters work in, what happens to violators, and the role (if any) they are assigned.
+									AwesomeBot provides <strong>filters</strong> for <strong>spam</strong>, <strong> excessive member/role mentions</strong>, <strong>NSFW content</strong>, and <strong>custom words</strong>. You can change which channels the filters work in, what happens to violators, and the role (if any) they are assigned.
 								</div>
 							</div>
 						</article>
@@ -87,6 +87,61 @@
 											<option value="">None</option>
 											<% for(var i=0; i<roleData.length; i++) { %>
 												<option value="<%= roleData[i].id %>" <%= configData.moderation.filters.spam_filter.violator_role_id==roleData[i].id ? "selected" : "" %>><%= roleData[i].name %></option>
+											<% } %>
+										</select>
+									</span>
+								</p>
+							</span>
+							<br>
+							<h4 class="subtitle is-4">
+								Mentions
+							</h4>
+							<p class="control">
+								<label class="checkbox">
+								<input name="mention_filter-isEnabled" type="checkbox" onclick="$('#mention_filter-options').toggleClass('is-hidden');" <%= configData.moderation.filters.mention_filter.isEnabled ? "checked" : "" %>>
+									Filter messages with excessive member/role mentions
+								</label>
+							</p>
+							<span id="mention_filter-options" class="<%= configData.moderation.filters.mention_filter.isEnabled ? '' : 'is-hidden' %>">
+								<label class="label">Enabled in these channel(s)</label>
+								<% for(var i=0; i<channelData.length; i++) { %>
+									<label class="checkbox">
+									<input name="mention_filter-disabled_channel_ids-<%= channelData[i].id %>" type="checkbox" <%= configData.moderation.filters.mention_filter.disabled_channel_ids.indexOf(channelData[i].id)==-1 ? "checked" : "" %>>
+										#<%= channelData[i].name %>
+									</label>
+									<br>
+								<% } %>
+								<br>
+								<label class="label">What happens to violators?</label>
+								<p class="control">
+									<span class="select">
+										<select name="mention_filter-action">
+											<option value="none" <%= configData.moderation.filters.mention_filter.action=="none" ? "selected" : "" %>>Nothing</option>
+											<option value="block" <%= configData.moderation.filters.mention_filter.action=="block" ? "selected" : "" %>>Block</option>
+		                                    <option value="mute" <%= configData.moderation.filters.mention_filter.action=="mute" ? "selected" : "" %>>Mute</option>
+		                                    <option value="kick" <%= configData.moderation.filters.mention_filter.action=="kick" ? "selected" : "" %>>Kick</option>
+		                                    <option value="ban" <%= configData.moderation.filters.mention_filter.action=="ban" ? "selected" : "" %>>Ban</option>
+										</select>
+									</span>
+								</p>
+								<label class="label">Mention sensitivity</label>
+								<p class="control">
+									<input name="mention_filter-mention_sensitivity" class="input" type="number" min="1" max="25" value="<%= configData.moderation.filters.mention_filter.mention_sensitivity %>">
+									<span class="help">Messages with <strong>more than</strong> this number of member and role mentions combined will be filtered.</span>
+								</p>
+								<p class="control">
+									<label class="checkbox">
+									<input name="mention_filter-delete_message" type="checkbox" <%= configData.moderation.filters.mention_filter.delete_message ? "checked" : "" %>>
+										Delete filtered mention-spam messages
+									</label>
+								</p>
+								<label class="label">Role assigned to violators</label>
+								<p class="control">
+									<span class="select">
+										<select name="mention_filter-violator_role_id">
+											<option value="">None</option>
+											<% for(var i=0; i<roleData.length; i++) { %>
+												<option value="<%= roleData[i].id %>" <%= configData.moderation.filters.mention_filter.violator_role_id==roleData[i].id ? "selected" : "" %>><%= roleData[i].name %></option>
 											<% } %>
 										</select>
 									</span>

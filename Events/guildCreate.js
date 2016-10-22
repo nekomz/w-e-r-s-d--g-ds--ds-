@@ -4,6 +4,7 @@ const postData = require("./../Modules/PostData.js");
 
 // Join new server
 module.exports = (bot, db, config, winston, svr) => {
+	svr.fetchAllMembers();
 	postData(winston, auth, bot.guilds.size, bot.user.id);
 	db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 		if(err || !serverDocument) {

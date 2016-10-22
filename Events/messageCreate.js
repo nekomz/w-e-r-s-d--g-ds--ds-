@@ -1,4 +1,3 @@
-const nsfwFilter = require("./../Configuration/filter.json");
 const checkFiltered = require("./../Modules/FilterChecker.js");
 const translate = require("./../Modules/MicrosoftTranslate.js");
 const runExtension = require("./../Modules/ExtensionRunner.js");
@@ -20,10 +19,10 @@ module.exports = (bot, db, config, winston, msg) => {
 
 			// Respond to message listener
 			if(bot.messageListeners[msg.channel.id] && bot.messageListeners[msg.channel.id][msg.author.id]) {
-				if(message.content.toLowerCase()=="quit") {
+				if(msg.content.toLowerCase()=="quit") {
 					bot.removeMessageListener(msg.channel.id, msg.author.id);
 					return;
-				} else if(bot.messageListeners[msg.channel.id][msg.author.id].filter(msg)) {
+				} else if(msg.content.trim() && bot.messageListeners[msg.channel.id][msg.author.id].filter(msg)) {
 					bot.messageListeners[msg.channel.id][msg.author.id].callback(msg);
 					bot.removeMessageListener(msg.channel.id, msg.author.id);
 					return;
@@ -107,27 +106,16 @@ module.exports = (bot, db, config, winston, msg) => {
 							bot.checkRank(winston, msg.guild, serverDocument, msg.member, memberDocument);
 						}
 
-						// Reset timer for room if applicable
-						var roomDocument = serverDocument.config.room_data.id(msg.channel.id);
-				        if(roomDocument) {
-				            clearTimeout(roomDocument.timer);
-				            roomDocument.timer = setTimeout(() => {
-				                msg.channel.delete().then(() => {
-				                	try {
-			                        	winston.info("Auto-deleted room '" + msg.channel.name + "' on server '" + msg.guild.name, {svrid: msg.guild.id, chid: msg.channel.id});
-			                        	roomDocument.remove();
-			                        	channelDocument.remove();
-			                        } catch(err) {}
-			                	}).catch(err => {
-			                		winston.info("Failed to auto-delete room '" + msg.channel.name + "' on server '" + msg.guild.name, {svrid: msg.guild.id, chid: msg.channel.id}, err);
-		                		});
-				            }, 300000);
-				        }
-
 						// Check for message from AFK user
 						if(userDocument.afk_message) {
-							userDocument.afk_message = undefined;
-							winston.info("Auto-removed AFK message for member '" + msg.author.username + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, usrid: msg.author.id});
+							userDocument.afk_message = null;
+							userDocument.save(err => {
+								if(err) {
+									winston.info("Failed to auto-remove AFK message for member '" + msg.author.username + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, usrid: msg.author.id}, err);
+								} else {
+									winston.info("Auto-removed AFK message for member '" + msg.author.username + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, usrid: msg.author.id});
+								}
+							});
 						}
 
 						// Check for start command from server admin
@@ -135,6 +123,20 @@ module.exports = (bot, db, config, winston, msg) => {
 							var startCommand = bot.checkCommandTag(msg.content, serverDocument);
 							if(startCommand && startCommand.command=="start") {
 								channelDocument.bot_enabled = true;
+								var str = "";
+								if(startCommand.suffix.toLowerCase()=="all") {
+									str = " in all channels";
+									serverDocument.channels.forEach(targetChannelDocument => {
+							        	targetChannelDocument.bot_enabled = true;
+							        });
+								}
+								serverDocument.save(err => {
+					            	if(err) {
+					            		winston.error("Failed to save server data for bot enabled", {svrid: msg.guild._id}, err);
+					            	}
+					            });
+								msg.channel.createMessage("Hello! 🐬 I'm back" + str);
+								return;
 							}
 						}
 
@@ -148,11 +150,11 @@ module.exports = (bot, db, config, winston, msg) => {
 							}
 
 							// Handle this as a violation
-							bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You used a filtered word in #" + msg.channel.name + " on " + msg.guild.name, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** used a filtered word (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.guild.name, "Word filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.custom_filter.action, serverDocument.config.moderation.filters.custom_filter.violator_role_id);
+							bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You used a filtered word in #" + msg.channel.name + " on " + msg.guild.name, "**@" + bot.getName(msg.guild, serverDocument, msg.member, true) + "** used a filtered word (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.guild.name, "Word filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.custom_filter.action, serverDocument.config.moderation.filters.custom_filter.violator_role_id);
 						}
 
 						// Spam filter
-						if(serverDocument.config.moderation.isEnabled && serverDocument.config.moderation.filters.spam_filter.isEnabled && serverDocument.config.moderation.filters.spam_filter.disabled_channel_ids.indexOf(msg.channel)==-1 && memberBotAdmin==0) {
+						if(serverDocument.config.moderation.isEnabled && serverDocument.config.moderation.filters.spam_filter.isEnabled && serverDocument.config.moderation.filters.spam_filter.disabled_channel_ids.indexOf(msg.channel.id)==-1 && memberBotAdmin<1) {
 							// Tracks spam with each new message (auto-delete after 45 seconds)
 							var spamDocument = channelDocument.spam_filter_data.id(msg.author.id);
 							if(!spamDocument) {
@@ -162,10 +164,13 @@ module.exports = (bot, db, config, winston, msg) => {
 								spamDocument.last_message_content = msg.cleanContent;
 								setTimeout(() => {
 									try {
-										spamDocument.remove();
-										serverDocument.save(err => {
-											winston.error("Failed to save server data for spam filter", {svrid: msg.guild.id}, err);
-										});
+										spamDocument = channelDocument.spam_filter_data.id(msg.author.id);
+										if(spamDocument) {
+											spamDocument.remove();
+											serverDocument.save(err => {
+												winston.error("Failed to save server data for spam filter", {svrid: msg.guild.id}, err);
+											});
+										}
 									} catch(err) {}
 								}, 45000);
 							// Add this message to spamDocument if similar to the last one
@@ -181,7 +186,7 @@ module.exports = (bot, db, config, winston, msg) => {
 									msg.author.getDMChannel().createMessage("Stop spamming in #" + msg.channel.name + " on " + msg.guild.name + ". The chat moderators have been notified about this.");
 
 									// Message bot admins about user spamming
-									bot.messageBotAdmins(svr, serverDocument, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** is spamming in #" + msg.channel.name + " on " + msg.guild.name);
+									bot.messageBotAdmins(msg.guild, serverDocument, "**@" + bot.getName(msg.guild, serverDocument, msg.member, true) + "** is spamming in #" + msg.channel.name + " on " + msg.guild.name);
 
 									// Deduct 25 AwesomePoints if necessary
 									if(serverDocument.config.commands.points.isEnabled) {
@@ -207,16 +212,36 @@ module.exports = (bot, db, config, winston, msg) => {
 										bot.purgeChannel(msg.channel.id, 50, targetMessage => {
 											return targetMessage.author.id==msg.author.id && levenshtein.get(spamDocument.last_message_content, targetMessage.cleanContent)<3;
 										}).then().catch(err => {
-			                            	winston.error("Failed to delete spam messages from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+			                            	winston.error("Failed to delete spam messages from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
 				                        });
 				                    }
 
 									// Handle this as a violation
-									bot.handleViolation(winston, svr, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You continued to spam in #" + msg.channel.name + " on " + msg.guild.name, "**@" + bot.getName(svr, serverDocument, msg.author, true) + "** continues to spam in #" + msg.channel.name + " on " + msg.guild.name, "Second-time spam violation in #" + msg.channel.name, serverDocument.config.moderation.filters.spam_filter.action, serverDocument.config.moderation.filters.spam_filter.violator_role_id);
+									bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You continued to spam in #" + msg.channel.name + " on " + msg.guild.name, "**@" + bot.getName(msg.guild, serverDocument, msg.author, true) + "** continues to spam in #" + msg.channel.name + " on " + msg.guild.name, "Second-time spam violation in #" + msg.channel.name, serverDocument.config.moderation.filters.spam_filter.action, serverDocument.config.moderation.filters.spam_filter.violator_role_id);
 
 									// Clear spamDocument, restarting the spam filter process
 									spamDocument.remove();
 								}
+							}
+						}
+
+						// Mention filter
+						if(serverDocument.config.moderation.isEnabled && serverDocument.config.moderation.filters.mention_filter.isEnabled && serverDocument.config.moderation.filters.mention_filter.disabled_channel_ids.indexOf(msg.channel.id)==-1 && memberBotAdmin<1) {
+							var totalMentions = msg.mentions.length + msg.roleMentions.length;
+
+							// Check if mention count is higher than threshold
+							if(totalMentions>serverDocument.config.moderation.filters.mention_filter.mention_sensitivity) {
+								winston.info("Handling mention spam from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+
+								// Delete message if necessary
+								if(serverDocument.config.moderation.filters.mention_filter.delete_message) {
+									msg.delete().then().catch(err => {
+										winston.error("Failed to delete filtered mention spam message from member '" + msg.author.username + "' in channel '" + msg.channel.name + "' on server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
+									});
+								}
+
+								// Handle this as a violation
+								bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You put " + totalMentions + " mentions in a message in #" + msg.channel.name + " on " + msg.guild.name, "**@" + bot.getName(msg.guild, serverDocument, msg.author, true) + "** mentioned " + totalMentions + " members/roles in a message in #" + msg.channel.name + " on " + msg.guild.name, "Mention spam (" + totalMentions + " members/roles) in #" + msg.channel.name, serverDocument.config.moderation.filters.mention_filter.action, serverDocument.config.moderation.filters.mention_filter.violator_role_id);
 							}
 						}
 
@@ -235,7 +260,7 @@ module.exports = (bot, db, config, winston, msg) => {
 							}
 
 							// Vote by mention
-							if(serverDocument.config.commands.points.isEnabled && msg.guild.members.size>2 && msg.content.indexOf("<@")==0 && msg.content.indexOf(">")<msg.content.indexOf(" ") && msg.content.indexOf(" ")>-1 && msg.content.indexOf(" ")<msg.content.length-1) {
+							if(serverDocument.config.commands.points.isEnabled && msg.guild.members.size>2 && !serverDocument.config.commands.points.disabled_channel_ids.includes(msg.channel.id) && msg.content.indexOf("<@")==0 && msg.content.indexOf(">")<msg.content.indexOf(" ") && msg.content.indexOf(" ")>-1 && msg.content.indexOf(" ")<msg.content.length-1) {
 							    var member = bot.memberSearch(msg.content.substring(0, msg.content.indexOf(" ")), msg.guild);
 							    var voteStr = msg.content.substring(msg.content.indexOf(" "));
 							    if(member && [bot.user.id, msg.author.id].indexOf(member.id)==-1 && !member.user.bot) {
@@ -348,12 +373,12 @@ module.exports = (bot, db, config, winston, msg) => {
     							// Check if message is a command, tag command, or extension trigger
     							var command = bot.checkCommandTag(msg.content, serverDocument);
 							    // Check if it's a first-party command and if it's allowed to run here
-    							if(command && serverDocument.config.commands[command.command].isEnabled && memberBotAdmin>=serverDocument.config.commands[command.command].admin_level && serverDocument.config.commands[command.command].disabled_channel_ids.indexOf(msg.channel.id)==-1) {
+    							if(command && bot.getPublicCommandMetadata(command.command) && serverDocument.config.commands[command.command].isEnabled && (bot.getPublicCommandMetadata(command.command).admin_exempt || memberBotAdmin>=serverDocument.config.commands[command.command].admin_level) && serverDocument.config.commands[command.command].disabled_channel_ids.indexOf(msg.channel.id)==-1) {
     								// Increment command usage count
     								incrementCommandUsage(serverDocument, command.command);
 
     								// NSFW filter for command suffix
-    								if(memberBotAdmin==0 && commands.public[command.command].defaults.is_nsfw_filtered && checkFiltered(serverDocument, msg.channel, command.suffix, true, false)) {
+    								if(memberBotAdmin<1 && bot.getPublicCommandMetadata(command.command).defaults.is_nsfw_filtered && checkFiltered(serverDocument, msg.channel, command.suffix, true, false)) {
     									// Delete offending message if necessary
     									if(serverDocument.config.moderation.filters.nsfw_filter.delete_message) {
     										msg.delete().then().catch(err => {
@@ -362,7 +387,7 @@ module.exports = (bot, db, config, winston, msg) => {
     									}
 
     									// Handle this as a violation
-    									bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You tried to fetch NSFW content in #" + msg.channel + " on " + msg.guild.name, "**@" + bot.getName(svr, serverDocument, msg.member, true) + "** is trying to fetch NSFW content (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.guild.name, "NSFW filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.nsfw_filter.action, serverDocument.config.moderation.filters.nsfw_filter.violator_role_id);
+    									bot.handleViolation(winston, msg.guild, serverDocument, msg.channel, msg.member, userDocument, memberDocument, "You tried to fetch NSFW content in #" + msg.channel + " on " + msg.guild.name, "**@" + bot.getName(msg.guild, serverDocument, msg.member, true) + "** is trying to fetch NSFW content (`" + msg.cleanContent + "`) in #" + msg.channel.name + " on " + msg.guild.name, "NSFW filter violation (\"" + msg.cleanContent + "\") in #" + msg.channel.name, serverDocument.config.moderation.filters.nsfw_filter.action, serverDocument.config.moderation.filters.nsfw_filter.violator_role_id);
 									// Run the command
     								} else {
 	    								winston.info("Treating '" + msg.cleanContent + "' as a command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
@@ -463,7 +488,7 @@ module.exports = (bot, db, config, winston, msg) => {
 
 // Delete command message if necessary
 function deleteCommandMessage(serverDocument, channelDocument, msg) {
-	if(serverDocument.config.delete_command_messages && msg.channel.permissionsOf(bot.user.id).has("manageMessages")) {
+	if(serverDocument.config.delete_command_messages && msg.channel.permissionsOf(msg._client.user.id).has("manageMessages")) {
 		channelDocument.isMessageDeletedDisabled = true;
 		msg.delete().then(() => {
 			channelDocument.isMessageDeletedDisabled = false;
@@ -482,10 +507,10 @@ function setCooldown(serverDocument, channelDocument) {
 			channelDocument.isCommandCooldownOngoing = false;
 			serverDocument.save(err => {
 				if(err) {
-					winston.error("Failed to save server data for command cooldown", {svrid: serverDocument._id});
+					winston.error("Failed to save server data for command cooldown", {svrid: serverDocument._id}. err);
 				}
-			}, channelDocument.command_cooldown || serverDocument.config.command_cooldown);
-		})
+			});
+		}, channelDocument.command_cooldown || serverDocument.config.command_cooldown);
 	}
 }
 
@@ -498,7 +523,7 @@ function chatterbotPrompt(usrid, prompt, botname, callback) {
     	if(res.status==200 && res.body) {
     		res = JSON.parse(res.body).botsay.replaceAll("Program-O", botname).replaceAll("<br/>", "\n").replaceAll("Elizabeth", "BitQuote");
     	} else {
-    		res = "I don't feel like talking rn :angry:";
+    		res = "I don't feel like talking rn 😠";
     	}
     	callback(res);
     });
@@ -513,6 +538,7 @@ function incrementCommandUsage(serverDocument, command) {
 		serverDocument.command_usage[command] = 0;
 	}
 	serverDocument.command_usage[command]++;
+	serverDocument.markModified("command_usage");
 }
 
 // Check if string contains at least one element in array

@@ -1,14 +1,27 @@
+const ModLog = require("./../../Modules/ModerationLogging.js");
+
 module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix, commandData) => {
-    var member = bot.memberSearch(suffix, msg.guild);
-    if(!suffix || !member || [msg.author.id, bot.user.id].indexOf(member.id)>-1) {
-        winston.warn("Invalid member provided for " + commandData.name + " command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-        msg.channel.createMessage(msg.author.mention + " Do you want me to kick you? 😮");
-    } else {
-        member.kick().then(() => {
-            msg.channel.createMessage("Ok, user kicked 👋");
-        }).catch(err => {
-            winston.error("Failed to kick member '" + member.user.username + "' from server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
-            msg.channel.createMessage("I don't have permission to kick on this server 😭");
-        });
-    }
-}
+	if(suffix) {
+		if(suffix.indexOf("|")>-1 && suffix.length>3) {
+			var member = bot.memberSearch(suffix.substring(0, suffix.indexOf("|")).trim(), msg.guild);
+			var reason = suffix.substring(suffix.indexOf("|")+1).trim();
+		} else {
+			var member = bot.memberSearch(suffix, msg.guild);
+			var reason;
+		}
+
+		if(member) {
+			member.kick().then(() => {
+				msg.channel.createMessage("**@" + bot.getName(msg.guild, serverDocument, member) + "** has been kicked 👋");
+				ModLog.create(msg.guild, serverDocument, "Kick", member, msg.member, reason);
+			}).catch(err => {
+				winston.error("Failed to kick member '" + member.user.username + "' from server '" + msg.guild.name + "'", {svrid: msg.guild.name, usrid: member.id}, err);
+				msg.channel.createMessage("I couldn't kick **@" + bot.getName(msg.guild, serverDocument, member) + "** 💥");
+			});
+		} else {
+			msg.channel.createMessage("I couldn't find a matching member on this server.");
+		}
+	} else {
+		msg.channel.createMessage("Do you want me to kick you? 😮");
+	}
+};

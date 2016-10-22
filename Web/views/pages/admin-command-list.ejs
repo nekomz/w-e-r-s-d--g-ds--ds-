@@ -40,9 +40,65 @@
 					<br>
 					<div class="container">
 						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
-							<% for(var i=Object.keys(configData.commands).length-1; i>=0; i--) { %>
-								<% if(["games", "messages", "music", "perms", "points", "ranks", "role", "roleinfo", "rss", "stats", "tag"].indexOf(Object.keys(configData.commands)[i])==-1) { %> 
-									<% var commandData = configData.commands[Object.keys(configData.commands)[i]];commandData.name = Object.keys(configData.commands)[i];commandData.description = commandDescriptions[Object.keys(configData.commands)[i]]; %>
+							<a class="button modal-button" data-target="#command-preset-modal">
+								<span class="icon is-small">
+									<i class="fa fa-cog"></i>
+								</span>
+								<span>Apply Preset</span>
+							</a>
+							<div id="command-preset-modal" class="modal">
+								<div class="modal-background"></div>
+								<div class="modal-container">
+									<div class="modal-content">
+										<div class="box">
+											<h4 class="subtitle is-4">
+												Command options preset
+											</h4>
+											<label class="label">Permissions</label>
+											<p class="control">
+												<span class="select">
+													<select name="preset-admin_level">
+														<option value="0">@everyone</option>
+														<option value="1">Admin level &ge;1</option>
+														<option value="2">Admin level &ge;2</option>
+														<option value="3">Admin level &ge;3</option>
+													</select>
+												</span>
+												<span class="help">Commands will only respond to members that have the selected bot admin level (or higher).</span>
+											</p>
+											<label class="label">Channel(s)</label>
+											<% for(var i=0; i<channelData.length; i++) { %>
+												<label class="checkbox">
+												<input name="preset-disabled_channel_ids-<%= channelData[i].id %>" class="preset-disabled_channel_ids" type="checkbox" checked>
+													#<%= channelData[i].name %>
+												</label>
+												<br>
+											<% } %>
+											<p class="control has-addons">
+												<a class="button is-small" onclick="toggleChannels('preset-disabled_channel_ids', true);">
+													<span>Select All</span>
+												</a>
+												<a class="button is-small" onclick="toggleChannels('preset-disabled_channel_ids', false);">
+													<span>Deselect All</span>
+												</a>
+											</p>
+											<span class="help">Commands will run only in these channels.</span>
+											<br>
+											<button name="preset-applied" class="button is-primary" onclick="saveFormState();">
+												<span class="icon is-small">
+													<i class="fa fa-asterisk"></i>
+												</span>
+												<span>Apply to all commands</span>
+											</button>
+										</div>
+									</div>
+								</div>
+								<a class="modal-close"></a>
+							</div>
+							<br><br>
+							<% for(var command in commandCategories) { %>
+								<% if(command!="stats") { %> 
+									<% var commandData = configData.commands[command];commandData.name = command;commandData.description = commandDescriptions[command];commandData.category = commandCategories[command]; %>
 									<% include ../partials/admin-command-item %>
 								<% } %>
 							<% } %>

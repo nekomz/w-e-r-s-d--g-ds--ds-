@@ -9,7 +9,7 @@ module.exports = (bot, db, config, winston, svr, member, oldmemberdata) => {
 					var channelDocument = serverDocument.channels.id(ch.id);
 					if(!channelDocument || channelDocument.bot_enabled) {
 						// Nickname added
-						if(oldmember.nick!=member.nick && !oldmember.nick && member.nick) {
+						if(oldmemberdata.nick!=member.nick && !oldmemberdata.nick && member.nick) {
 							ch.createMessage({
 								content: "**@" + bot.getName(svr, serverDocument, member) + "** got a nick: `" + member.nick + "`",
 								disableEveryone: true
@@ -17,17 +17,17 @@ module.exports = (bot, db, config, winston, svr, member, oldmemberdata) => {
 						}
 
 						// Nickname changed
-						if(oldmember.nick!=member.nick && oldmember.nick && member.nick) {
+						if(oldmemberdata.nick!=member.nick && oldmemberdata.nick && member.nick) {
 							ch.createMessage({
-								content: "**@" + bot.getName(svr, serverDocument, member) + "** changed their nick from `" + oldmember.nick + "` to `" + member.nick + "`",
+								content: "**@" + bot.getName(svr, serverDocument, member) + "** changed their nick from `" + oldmemberdata.nick + "` to `" + member.nick + "`",
 								disableEveryone: true
 							});
 						}
 
 						// Nickname removed
-						if(oldmember.nick!=member.nick && oldmember.nick && !member.nick) {
+						if(oldmemberdata.nick!=member.nick && oldmemberdata.nick && !member.nick) {
 							ch.createMessage({
-								content: "**@" + bot.getName(svr, serverDocument, member) + "** removed their nick (`" + oldmember.nick + "`)",
+								content: "**@" + bot.getName(svr, serverDocument, member) + "** removed their nick (`" + oldmemberdata.nick + "`)",
 								disableEveryone: true
 							});
 						}

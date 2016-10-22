@@ -15,14 +15,5 @@ module.exports = new mongoose.Schema({
 		_id: {type: String, required: true},
 		started_timestamp: {type: Date, required: true}
 	})],
-	member_kicked_data: [new mongoose.Schema({
-		_id: {type: String, required: true},
-		creator_id: {type: String, required: true},
-		reason: {type: String, required: true}
-	})],
-	member_banned_data: [new mongoose.Schema({
-		_id: {type: String, required: true},
-		creator_id: {type: String, required: true},
-		reason: {type: String, required: true}
-	})]
+	modlog: require("./serverModlogSchema.js")
 });

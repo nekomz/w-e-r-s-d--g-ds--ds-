@@ -7,8 +7,8 @@ module.exports = new mongoose.Schema({
     points: {type: Number, default: 1},
     afk_message: String,
     server_nicks: [new mongoose.Schema({
-        _id: String,
-        server_id: String
+        _id: {type: String, required: true, lowercase: true},
+        server_id: {type: String, required: true}
     })],
 	reminders: [new mongoose.Schema({
         name: {type: String, required: true},

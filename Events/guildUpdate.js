@@ -5,9 +5,9 @@ module.exports = (bot, db, config, winston, svr, oldsvrdata) => {
 		if(!err && serverDocument) {
 			if(serverDocument.config.moderation.isEnabled) {
 				// Send server_name_updated_message if necessary
-				if(oldsvrdata.name!=svr.name && serverDocument.config.moderation.status_messages.server_name_updated.isEnabled) {
+				if(oldsvrdata.name!=svr.name && serverDocument.config.moderation.status_messages.server_name_updated_message.isEnabled) {
 					winston.info("Name of server '" + oldsvrdata.name + "' changed to '" + svr.name + "'", {svrid: svr.id});
-					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_name_updated.channel_id);
+					var ch = svr.channels.get(serverDocument.config.moderation.status_messages.server_name_updated_message.channel_id);
 					if(ch) {
 						ch.createMessage("Server name changed from `" + oldsvrdata.name + "` to `" + svr.name + "`");
 					}

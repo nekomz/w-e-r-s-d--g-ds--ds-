@@ -1,8 +1,9 @@
 var initial_form_state;
 function saveFormState() {
 	try{
-		$("#builder-code-box").val(cm.getDoc().getValue())
+		$("#builder-code-box").val(cm.getDoc().getValue());
 	} catch(err) {}
+	hide_update_modal = true;
 	initial_form_state = $('#form').serialize();
 }
 

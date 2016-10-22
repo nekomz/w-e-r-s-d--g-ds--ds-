@@ -5,15 +5,20 @@
 	<% include ../partials/head %>
 
 	<style type="text/css">
-	@media screen and (max-width: 768px) {
+	@media screen and (max-width: 420px) {
 		#awesomebot-title {
-			font-size: 48px;
+			font-size: 42px;
+		}
+	}
+	@media screen and (min-width: 321px) and (max-width: 768px) {
+		#awesomebot-title {
+			font-size: 46px;
 		}
 		#awesomebot-subtitle {
 			font-size: 30px;
 		}
 		#awesomebot-discord {
-			height: 32px;
+			height: 31px;
 		}
 	}
 	@media screen and (min-width: 769px) {
@@ -48,7 +53,7 @@
 			<div class="container has-text-centered">
 				<img src="/img/icon.png" style="border-radius: 100%;width:200px;">
 				<h1 id="awesomebot-title" class="title is-1" style="font-family: Montserrat;">
-					AwesomeBot
+					<span style="display: inline-block;">AwesomeBot</span>
 				</h1>
 				<h2 id="awesomebot-subtitle" class="title is-2">
 					The best <img id="awesomebot-discord" src="/img/discord-logo.png" style="vertical-align: top;"> bot!
@@ -56,7 +61,7 @@
 				<br>
 
 				<p class="hero-buttons">
-					<a class="button is-primary is-large" href="http://add.awesomebot.xyz">
+					<a class="button is-primary is-large" href="/add">
 						<span class="icon">
 							<i class="fa fa-plus"></i>
 						</span>
@@ -81,11 +86,11 @@
 						<a class="nav-item is-tab section-shortcut-link" href="#media">
 							Media
 						</a>
-						<a class="nav-item is-tab section-shortcut-link" href="#features">
-							Features
-						</a>
 						<a class="nav-item is-tab section-shortcut-link" href="#stats">
 							Stats
+						</a>
+						<a class="nav-item is-tab section-shortcut-link" href="#features">
+							Features
 						</a>
 						<a class="nav-item is-tab section-shortcut-link" href="#customizability">
 							Customizability
@@ -132,6 +137,26 @@
 		</div>
 	</section>
 
+	<section id="media" class="hero is-large is-light is-bold">
+		<div class="hero-body">
+			<div class="container">
+				<nav class="columns">
+					<div class="column has-text-centered">
+						<img src="/img/media.png">
+					</div>
+					<div class="column has-text-centered">
+						<h2 class="title is-2">
+						GIFs, YouTube, Reddit, and more.
+						</h2>
+						<p>
+							Media commands are what makes AwesomeBot so much fun. Find memes on <strong>Giphy</strong> or create your own. Search for great <strong>videos</strong> on YouTube. Share the latest on a subreddit with your friends. Get the latest from any <strong>RSS feeds</strong>. View all the <strong>XKCD</strong> comics. Discover <strong>Anime</strong> with a powerful, intuitive command. Get <strong>IMDB</strong> information on TV shows and movies. Quickly fetch links to listings on <strong>Google Play</strong> and the <strong>App Store</strong>. AwesomeBot makes sharing content from around the web in chat easier than ever.
+						</p>
+					</div>
+				</nav>
+			</div>
+		</div>
+	</section>
+
 	<section id="stats" class="hero is-small is-black is-bold">
 		<div class="hero-body">
 			<div class="container">
@@ -146,27 +171,7 @@
 					</div>
 					<div class="level-item has-text-centered" title="<%= rawUptime %>">
 						<p class="heading">Uptime</p>
-						<p class="title is-2"><%= roundedUptime %>h</p>
-					</div>
-				</nav>
-			</div>
-		</div>
-	</section>
-
-	<section id="media" class="hero is-large is-light is-bold">
-		<div class="hero-body">
-			<div class="container">
-				<nav class="columns">
-					<div class="column has-text-centered">
-						<img src="/img/media.png">
-					</div>
-					<div class="column has-text-centered">
-						<h2 class="title is-2">
-						GIFs, YouTube, Reddit, and more.
-						</h2>
-						<p>
-							Media commands are what makes AwesomeBot so much fun. Find memes on <strong>Giphy</strong> or create your own. Search for great <strong>videos</strong> on YouTube. Share the latest on a subreddit with your friends. Get the latest from any <strong>RSS feeds</strong>. View all the <strong>XKCD</strong> comics. Discover <strong>Anime</strong> and <strong>Manga</strong> with two powerful, intuitive commands. Get <strong>IMDB</strong> information on TV shows and movies. Quickly fetch links to listings on <strong>Google Play</strong> and the <strong>App Store</strong>. AwesomeBot makes sharing content from around the web in chat easier than ever.
-						</p>
+						<p class="title is-2"><%= roundedUptime %></p>
 					</div>
 				</nav>
 			</div>
@@ -256,165 +261,177 @@
 				<br><br><br>
 				<div class="columns">
 					<div class="column is-one-third">
-						<div class="card">
-							<div class="card-image">
-								<figure class="image is-square">
-									<img src="/img/bitquote.png" alt="">
-								</figure>
-							</div>
-							<div class="card-content">
-								<div class="media">
-									<div class="media-content">
-										<p class="title is-3">BitQuote</p>
-										<p class="subtitle is-5">Creator + everything else</p>
+						<center>
+							<div class="card" style="text-align: left;">
+								<div class="card-image">
+									<figure class="image is-square">
+										<img src="/img/bitquote.png" alt="">
+									</figure>
+								</div>
+								<div class="card-content">
+									<div class="media">
+										<div class="media-content">
+											<p class="title is-3" ondblclick="this.innerHTML = 'LazyWaffle';">BitQuote</p>
+											<p class="subtitle is-5">Creator + everything else</p>
+										</div>
+									</div>
+
+									<div class="content">
+										Just another robot <span class="icon">
+											<i class="fa fa-smile-o"></i>
+										</span>
+										<br>
+										<a href="https://github.com/BitQuote">GitHub</a>
 									</div>
 								</div>
-
-								<div class="content">
-									Just another robot <span class="icon">
-										<i class="fa fa-smile-o"></i>
-									</span>
-									<br>
-									<a href="https://github.com/BitQuote">GitHub</a>
-								</div>
 							</div>
-						</div>
+						</center>
 					</div>
 					<div class="column is-one-third">
-						<div class="card">
-							<div class="card-image">
-								<figure class="image is-square">
-									<img src="/img/mistmurk.png" alt="">
-								</figure>
-							</div>
-							<div class="card-content">
-								<div class="media">
-									<div class="media-content">
-										<p class="title is-3">mistmurk</p>
-										<p class="subtitle is-5">Dev, Wiki Editor, Support</p>
+						<center>
+							<div class="card" style="text-align: left;">
+								<div class="card-image">
+									<figure class="image is-square">
+										<img src="/img/mistmurk.png" alt="">
+									</figure>
+								</div>
+								<div class="card-content">
+									<div class="media">
+										<div class="media-content">
+											<p class="title is-3">mistmurk</p>
+											<p class="subtitle is-5">Dev, Wiki Editor, Support</p>
+										</div>
+									</div>
+
+									<div class="content">
+										Stardust insomniac <span class="icon">
+											<i class="fa fa-heart-o"></i>
+										</span>
+										<br>
+										<a href="https://github.com/mistmurk">GitHub</a>
+										&nbsp;
+										<a href="https://soundcloud.com/mist-murk">SoundCloud</a>
 									</div>
 								</div>
-
-								<div class="content">
-									Stardust insomniac <span class="icon">
-										<i class="fa fa-heart-o"></i>
-									</span>
-									<br>
-									<a href="https://github.com/mistmurk">GitHub</a>
-									&nbsp;
-									<a href="https://soundcloud.com/mist-murk">SoundCloud</a>
-								</div>
 							</div>
-						</div>
+						</center>
 					</div>
 					<div class="column is-one-third">
-						<div class="card">
-							<div class="card-image">
-								<figure class="image is-square">
-									<img src="/img/ksham.jpg" alt="">
-								</figure>
-							</div>
-							<div class="card-content">
-								<div class="media">
-									<div class="media-content">
-										<p class="title is-3">ksham</p>
-										<p class="subtitle is-5">Dev, Wiki Editor, Support</p>
+						<center>
+							<div class="card" style="text-align: left;">
+								<div class="card-image">
+									<figure class="image is-square">
+										<img src="/img/ksham.jpg" alt="">
+									</figure>
+								</div>
+								<div class="card-content">
+									<div class="media">
+										<div class="media-content">
+											<p class="title is-3">ksham</p>
+											<p class="subtitle is-5">Dev, Wiki Editor, Support</p>
+										</div>
+									</div>
+
+									<div class="content">
+										I haven't decided yet. <span class="icon">
+											<i class="fa fa-exclamation-circle"></i>
+										</span>
+										<br>
+										<a href="https://github.com/Kays">GitHub</a>
 									</div>
 								</div>
-
-								<div class="content">
-									I haven't decided yet. <span class="icon">
-										<i class="fa fa-exclamation-circle"></i>
-									</span>
-									<br>
-									<a href="https://github.com/Kays">GitHub</a>
-								</div>
 							</div>
-						</div>
+						</center>
 					</div>
 				</div>
 				<br>
 				<div class="columns">
 					<div class="column is-one-third">
-						<div class="card">
-							<div class="card-image">
-								<figure class="image is-square">
-									<img src="/img/tinytaco.jpg" alt="">
-								</figure>
-							</div>
-							<div class="card-content">
-								<div class="media">
-									<div class="media-content">
-										<p class="title is-3">tinytaco</p>
-										<p class="subtitle is-5">Wiki Editor, Support</p>
+						<center>
+							<div class="card" style="text-align: left;">
+								<div class="card-image">
+									<figure class="image is-square">
+										<img src="/img/tinytaco.jpg" alt="">
+									</figure>
+								</div>
+								<div class="card-content">
+									<div class="media">
+										<div class="media-content">
+											<p class="title is-3">tinytaco</p>
+											<p class="subtitle is-5">Wiki Editor, Support</p>
+										</div>
+									</div>
+
+									<div class="content">
+										I really like tacos. <span class="icon">
+											<i class="fa fa-heart"></i>
+										</span>
+										<br>
+										<a href="https://github.com/tinytaco8">GitHub</a>
+										&nbsp;
+										<a href="http://tinytaco.xyz/">Website</a>
+										&nbsp;
+										<a href="https://twitter.com/tinytaco8">Twitter</a>
 									</div>
 								</div>
-
-								<div class="content">
-									I really like tacos. <span class="icon">
-										<i class="fa fa-heart"></i>
-									</span>
-									<br>
-									<a href="https://github.com/tinytaco8">GitHub</a>
-									&nbsp;
-									<a href="http://tinytaco.xyz/">Website</a>
-									&nbsp;
-									<a href="https://twitter.com/tinytaco8">Twitter</a>
-								</div>
 							</div>
-						</div>
+						</center>
 					</div>
 					<div class="column is-one-third">
-						<div class="card">
-							<div class="card-image">
-								<figure class="image is-square">
-									<img src="/img/rydgeback.jpg" alt="">
-								</figure>
-							</div>
-							<div class="card-content">
-								<div class="media">
-									<div class="media-content">
-										<p class="title is-3">rydgeback</p>
-										<p class="subtitle is-5">Wiki Editor, Support</p>
+						<center>
+							<div class="card" style="text-align: left;">
+								<div class="card-image">
+									<figure class="image is-square">
+										<img src="/img/rydgeback.jpg" alt="">
+									</figure>
+								</div>
+								<div class="card-content">
+									<div class="media">
+										<div class="media-content">
+											<p class="title is-3">rydgeback</p>
+											<p class="subtitle is-5">Wiki Editor, Support</p>
+										</div>
+									</div>
+
+									<div class="content">
+										Wiki lad for life <span class="icon">
+											<i class="fa fa-rocket"></i>
+										</span>
+										<br>
+										<a href="https://github.com/rydgeback">GitHub</a>
 									</div>
 								</div>
-
-								<div class="content">
-									Wiki lad for life <span class="icon">
-										<i class="fa fa-rocket"></i>
-									</span>
-									<br>
-									<a href="https://github.com/rydgeback">GitHub</a>
-								</div>
 							</div>
-						</div>
+						</center>
 					</div>
 					<div class="column is-one-third">
-						<div class="card">
-							<div class="card-image">
-								<figure class="image is-square">
-									<img src="/img/hucota7.jpg" alt="">
-								</figure>
-							</div>
-							<div class="card-content">
-								<div class="media">
-									<div class="media-content">
-										<p class="title is-3">Hucota7</p>
-										<p class="subtitle is-5">Wiki Editor, Support</p>
+						<center>
+							<div class="card" style="text-align: left;">
+								<div class="card-image">
+									<figure class="image is-square">
+										<img src="/img/hucota7.jpg" alt="">
+									</figure>
+								</div>
+								<div class="card-content">
+									<div class="media">
+										<div class="media-content">
+											<p class="title is-3">Hucota7</p>
+											<p class="subtitle is-5">Wiki Editor, Support</p>
+										</div>
+									</div>
+
+									<div class="content">
+										A programming cat or something <span class="icon">
+											<i class="fa fa-paw"></i>
+										</span>
+										<br>
+										<a href="https://github.com/hucota7">GitHub</a>
+										&nbsp;
+										<a href="https://twitter.com/hucota7">Twitter</a>
 									</div>
 								</div>
-
-								<div class="content">
-									A programming cat or something <span class="icon">
-										<i class="fa fa-paw"></i>
-									</span>
-									<br>
-									<a href="https://github.com/hucota7">GitHub</a>
-									&nbsp;
-									<a href="https://twitter.com/hucota7">Twitter</a>
-								</div>
 							</div>
-						</div>
+						</center>
 					</div>
 				</div>
 			</div>
@@ -426,7 +443,7 @@
 			<div class="container">
 				<div class="has-text-centered">
 					<p class="hero-buttons">
-						<a class="button is-primary is-large" href="http://add.awesomebot.xyz" style="background-color: #009688;">
+						<a class="button is-primary is-large" href="/add" style="background-color: #009688;">
 							Convinced? Get started now
 						</a>
 					</p>

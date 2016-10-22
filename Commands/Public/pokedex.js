@@ -1,8 +1,8 @@
 const unirest = require("unirest");
 
 module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix, commandData) => {
-	if(suffix && !isNaN(suffix)) {
-		unirest.get("http://pokeapi.co/api/v2/pokemon-species/" + encodeURIComponent(suffix)).header("Accept", "application/json").end(res => {
+	if(suffix) {
+		unirest.get("http://pokeapi.co/api/v2/pokemon-species/" + encodeURIComponent(suffix.toLowerCase())).header("Accept", "application/json").end(res => {
 			if(res.status==200 && res.body) {
 				var info = "__Pokemon #" + res.body.id + ": " + res.body.names[0].name + "__\n";
 				if(res.body.gender_rate==-1) {
@@ -18,7 +18,7 @@ module.exports = (bot, db, config, winston, userDocument, serverDocument, channe
 			}
 		});
 	} else {
-		winston.warn("Parameters not provided or invalid for `" + commandData.name + "` command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
+		winston.warn("Parameters not provided for '" + commandData.name + "' command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
 		msg.channel.createMessage(msg.author.mention + " :speak_no_evil: :writing_hand: :1234:")
 	}
 };

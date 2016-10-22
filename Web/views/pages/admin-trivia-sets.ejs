@@ -7,6 +7,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newTrivia() {
+		hide_update_modal = true;
+		
 		var newTriviaName = $("#new-trivia-name");
 		if(newTriviaName.val()) {
 			newTriviaName.removeClass("is-danger");

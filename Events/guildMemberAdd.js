@@ -21,7 +21,7 @@ module.exports = (bot, db, config, winston, svr, member) => {
 				// Send new_member_pm if necessary
 				if(serverDocument.config.moderation.status_messages.new_member_pm.isEnabled && !member.user.bot) {
 					member.user.getDMChannel().then(ch =>{
-						ch.createMessage("Welcome to the " + svr.name + " Discord chat! " + serverDocument.config.moderation.status_messages.new_member_pm.message_content + " I'm " + bot.getName(svr, serverDocument, svr.member(bot.user)) + " by the way. Learn more with `" + bot.getCommandPrefix(svr, serverDocument) + "help` in the public chat.");
+						ch.createMessage("Welcome to the " + svr.name + " Discord chat! " + serverDocument.config.moderation.status_messages.new_member_pm.message_content + " I'm " + bot.getName(svr, serverDocument, svr.members.get(bot.user.id)) + " by the way. Learn more with `" + bot.getCommandPrefix(svr, serverDocument) + "help` in the public chat.");
 					});
 				}
 

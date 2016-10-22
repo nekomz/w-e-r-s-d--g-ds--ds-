@@ -25,13 +25,19 @@
 								<%= extensions[i].type.charAt(0).toUpperCase() + extensions[i].type.slice(1) %>
 							</td>
 							<td>
-								<%= extensions[i].state=="gallery" ? "Published" : "In Queue" %>
+								<% if(extensions[i].state=="gallery") { %>
+									Published
+								<% } else if(extensions[i].state=="queue") { %>
+									In Queue
+								<% } else { %>
+									Saved
+								<% } %>
 							</td>
 							<td>
 								<%= extensions[i].points %>
 							</td>
 							<td>
-								<a class="button is-small" href="/extensions/<%= extensions[i].state %>?q=<%= extensions[i]._id %>">
+								<a class="button is-small" href="/extensions/<%= extensions[i].state %>?id=<%= extensions[i]._id %>">
 									<span class="icon is-small">
 										<i class="fa fa-eye"></i>
 									</span>

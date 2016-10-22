@@ -35,7 +35,7 @@ module.exports = {
 				serverDocument.members.push({_id: member.id});
 				memberDocument = serverDocument.members.id(member.id);
 			}
-			memberDocument.voice += Math.ceil((Date.now() - voiceDocument.started_timestamp)/6000);
+			memberDocument.voice += Math.floor((Date.now() - voiceDocument.started_timestamp)/60000);
 			voiceDocument.remove();
 			bot.checkRank(winston, svr, serverDocument, member, memberDocument);
 		}

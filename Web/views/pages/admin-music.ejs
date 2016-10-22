@@ -7,6 +7,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newPlaylist() {
+		hide_update_modal = true;
+		
 		var newPlaylistName = $("#new-playlist-name");
 		if(newPlaylistName.val()) {
 			newPlaylistName.removeClass("is-danger");
@@ -30,6 +32,8 @@
 	}
 
 	function newPlaylistItem(i) {
+		hide_update_modal = true;
+		
 		var newPlayListItemName = $("#new-playlist-" + i + "-item");
 		if(newPlayListItemName.val()) {
 			newPlayListItemName.removeClass("is-danger");
@@ -81,7 +85,7 @@
 							<h4 class="subtitle is-4">
 								General
 							</h4>
-							<% var commandData = configData.commands.music;commandData.name = "music";commandData.description = commandDescriptions.music; %>
+							<% var commandData = configData.commands.music;commandData.name = "music";commandData.description = commandDescriptions.music;commandData.category = commandCategories.music; %>
 							<% include ../partials/admin-command-item %>
 							<span class="music-options<%= configData.commands.music.isEnabled ? '' : ' is-hidden' %>">
 								<p class="control">

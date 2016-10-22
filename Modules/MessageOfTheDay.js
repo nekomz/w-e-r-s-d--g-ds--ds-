@@ -1,7 +1,7 @@
 // Send message of the day to a server
 module.exports = (bot, winston, svr, motd) => {
 	function sendMOTD() {
-		if(motd.isEnabled) {
+		if(motd.isEnabled && motd.message_content) {
 			var ch = svr.channels.get(motd.channel_id);
 			if(ch) {
 				motd.last_run = Date.now();
@@ -15,7 +15,9 @@ module.exports = (bot, winston, svr, motd) => {
 			setTimeout(sendMOTD, motd.interval);
 		}
 	}
-	setTimeout(() => {
-		sendMOTD();
-	}, (motd.last_run + motd.interval) - Date.now());
+	if(motd.isEnabled) {
+		setTimeout(() => {
+			sendMOTD();
+		}, (motd.last_run + motd.interval) - Date.now());
+	}
 };

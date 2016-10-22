@@ -6,6 +6,8 @@
 	<script src="/js/form-change-listener.js"></script>
 	<script>
 	function newTag() {
+		hide_update_modal = true;
+		
 		var newTagName = $("#new-tag-name");
 		if(newTagName.val()) {
 			newTagName.removeClass("is-danger");
@@ -68,7 +70,7 @@
 							<h4 class="subtitle is-4">
 								General
 							</h4>
-							<% var commandData = configData.commands.tag;commandData.name = "tag";commandData.description = commandDescriptions.tag; %>
+							<% var commandData = configData.commands.tag;commandData.name = "tag";commandData.description = commandDescriptions.tag;commandData.category = commandCategories.tag; %>
 							<% include ../partials/admin-command-item %>
 							<span class="tag-options<% configData.commands.tag.isEnabled ? '' : ' is-hidden' %>">
 								<p class="control">
@@ -140,7 +142,7 @@
 														<%= configData.tags.list[i]._id %>
 													</td>
 													<td>
-														<%= configData.tags.list[i].content %>
+														<%- configData.tags.list[i].content %>
 													</td>
 													<td>
 														<p class="control">
@@ -186,23 +188,18 @@
 									<br>
 								<% } %>
 							</div>
-							<div class="control is-grouped">
-								<p class="control is-expanded">
-									<input id="new-tag-name" class="input" type="text" minlength="1" maxlength="200" placeholder="Name" onkeypress="return event.keyCode != 13;">
-								</p>
-								<p class="control">
-									<span class="select">
-										<select id="new-tag-type">
-											<option value="text">Text</option>
-											<option value="command">Command</option>
-										</select>
-									</span>
-								</p>
-							</div>
 							<div class="control is-horizontal">
 								<div class="control is-grouped">
 									<p class="control is-expanded">
-										<input id="new-tag-content" class="input" type="text" minlength="1" maxlength="1500" placeholder="Tag content (markdown)">
+										<input id="new-tag-name" class="input" type="text" minlength="1" maxlength="200" placeholder="Name" onkeypress="return event.keyCode != 13;">
+									</p>
+									<p class="control">
+										<span class="select">
+											<select id="new-tag-type">
+												<option value="text">Text</option>
+												<option value="command">Command</option>
+											</select>
+										</span>
 									</p>
 									<p class="control">
 										<a class="button is-primary" onclick="newTag();">
@@ -214,6 +211,9 @@
 									</p>
 								</div>
 							</div>
+							<p class="control is-expanded">
+								<textarea id="new-tag-content" class="input" type="textarea" minlength="1" maxlength="1500" placeholder="Tag content (markdown)"></textarea>
+							</p>
 							<br>
 							<% var formButtonsUnsaved = false; %>
 							<% include ../partials/form-buttons %>

@@ -33,18 +33,11 @@
 					<br>
 					<div class="container">
 						<form id="form" action="<%= currentPage %>?svrid=<%= serverData.id %>" method="post">
-							<% var commandData = configData.commands.roleinfo;commandData.name = "roleinfo";commandData.description = commandDescriptions.roleinfo; %>
+							<% var commandData = configData.commands.roleinfo;commandData.name = "roleinfo";commandData.description = commandDescriptions.roleinfo;commandData.category = commandCategories.roleinfo; %>
 							<% include ../partials/admin-command-item %>
-							<% var commandData = configData.commands.role;commandData.name = "role";commandData.description = commandDescriptions.role; %>
+							<% var commandData = configData.commands.role;commandData.name = "role";commandData.description = commandDescriptions.role;commandData.category = commandCategories.role; %>
 							<% include ../partials/admin-command-item %>
 							<span class="role-options">
-								<p class="control">
-									<label class="checkbox">
-									<input name="custom_colors" type="checkbox" <%= configData.custom_colors ? "checked" : "" %>>
-										Allow users to set custom colors with the <code>role</code> command
-									</label>
-									<span class="help">Custom colors are assigned by giving users an individual role with the color of their choice.</span>
-								</p>
 								Allow users to join these roles with the <code>role</code> command:
 								<p class="control">
 									<% for(var i=0; i<roleData.length; i++) { %>
@@ -57,7 +50,7 @@
 								</p>
 								<br>
 							</span>
-							<% var commandData = configData.commands.perms;commandData.name = "perms";commandData.description = commandDescriptions.perms; %>
+							<% var commandData = configData.commands.perms;commandData.name = "perms";commandData.description = commandDescriptions.perms;commandData.category = commandCategories.perms; %>
 							<% include ../partials/admin-command-item %>
 							<br>
 							<% var formButtonsUnsaved = false; %>

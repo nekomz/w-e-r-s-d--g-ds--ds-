@@ -11,7 +11,7 @@ module.exports = (bot, db, config, winston, ch) => {
 					channelDocument.remove();
 				}
 				for(var command in serverDocument.toObject().config.commands) {
-					if(serverDocument.config.commands[command].disabled_channel_ids && serverDocument.config.commands[command].disabled_channel_ids.indexOf(ch.id)>-1) {
+					if(serverDocument.config.commands[command] && serverDocument.config.commands[command].disabled_channel_ids && serverDocument.config.commands[command].disabled_channel_ids.indexOf(ch.id)>-1) {
 						updated = true;
 						serverDocument.config.commands[command].disabled_channel_ids.splice(serverDocument.config.commands[command].disabled_channel_ids.indexOf(ch.id), 1);
 					}
@@ -64,7 +64,9 @@ module.exports = (bot, db, config, winston, ch) => {
 				// Save changes to serverDocument if necessary
 				if(updated) {
 					serverDocument.save(err => {
-						winston.error("Failed to save server data for removing channel", {svrid: ch.guild.id}, err);
+						if(err) {
+							winston.error("Failed to save server data for removing channel", {svrid: ch.guild.id}, err);
+						}
 					});
 				}
 			} else {

@@ -8,6 +8,8 @@
 	<script src="/js/auto-complete.min.js"></script>
 	<script>
 	function newBlock() {
+		hide_update_modal = true;
+		
 		var newBlockMember = $("#new-block-member");
 		if(newBlockMember.val()) {
 			newBlockMember.removeClass("is-danger");

@@ -15,6 +15,5 @@ module.exports = new mongoose.Schema({
 		reason: {type: String, required: true, maxlength: 2000},
 		timestamp: {type: Date, default: Date.now}
 	})],
-	isPointsCooldownOngoing: {type: Boolean, default: false},
 	profile_fields: mongoose.Schema.Types.Mixed
 });

@@ -1,27 +1,27 @@
+const ModLog = require("./../../Modules/ModerationLogging.js");
+
 module.exports = (bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, msg, suffix, commandData) => {
-    var query = suffix.substring(0, suffix.lastIndexOf(" "));
-    var deleteMessageDays = suffix.substring(suffix.lastIndexOf(" ")+1);
+	if(suffix) {
+		if(suffix.indexOf("|")>-1 && suffix.length>3) {
+			var member = bot.memberSearch(suffix.substring(0, suffix.indexOf("|")).trim(), msg.guild);
+			var reason = suffix.substring(suffix.indexOf("|")+1).trim();
+		} else {
+			var member = bot.memberSearch(suffix, msg.guild);
+			var reason;
+		}
 
-    if(!query || isNaN(deleteMessageDays)) {
-        query = suffix;
-        deleteMessageDays = 0;
-    }
-    if(deleteMessageDays<1) {
-        deleteMessageDays = 0;
-    } else {
-        deleteMessageDays = parseInt(deleteMessageDays);
-    }
-
-    var member = bot.memberSearch(query, msg.guild);
-    if(!query || !member || [msg.author.id, bot.user.id].indexOf(member.id)>-1) {
-        winston.warn("Invalid member provided for " + commandData.name + " command", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id});
-        msg.channel.createMessage(msg.author.mention + " Do you want me to ban you? 😮");
-    } else {
-        member.ban(deleteMessageDays).then(() => {
-            msg.channel.createMessage("Ok, user banned 👋" + (deleteMessageDays ? ("\nI also deleted their messages from the last " + deleteMessageDays + " days") : ""));
-        }).catch(err => {
-            winston.error("Failed to ban user '" + member.user.username + "' from server '" + msg.guild.name + "'", {svrid: msg.guild.id, chid: msg.channel.id, usrid: msg.author.id}, err);
-            msg.channel.createMessage("I don't have permission to ban on this server 😭");
-        });
-    }
-}
+		if(member) {
+			member.ban(1).then(() => {
+				msg.channel.createMessage("Bye-bye **@" + bot.getName(msg.guild, serverDocument, member) + "** 🔨");
+				ModLog.create(msg.guild, serverDocument, "Ban", member, msg.member, reason);
+			}).catch(err => {
+				winston.error("Failed to ban member '" + member.user.username + "' from server '" + msg.guild.name + "'", {svrid: msg.guild.name, usrid: member.id}, err);
+				msg.channel.createMessage("I couldn't ban **@" + bot.getName(msg.guild, serverDocument, member) + "** 🍇");
+			});
+		} else {
+			msg.channel.createMessage("I couldn't find a matching member on this server.");
+		}
+	} else {
+		msg.channel.createMessage("Do you want me to ban you? 😮");
+	}
+};

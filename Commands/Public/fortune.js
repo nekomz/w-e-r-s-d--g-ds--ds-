@@ -7,12 +7,13 @@ module.exports = function fortune(bot, db, config, winston, userDocument, server
         for(var i=0; i<categories.length; i++) {
             info += "\n\t" + i + ") " + categories[i].charAt(0) + categories[i].slice(1);
         }
-        msg.channel.createMessage("Please pick a topic from this list: `" + categories.join("`, `") + "`");
-        bot.awaitMessage(msg.channel.id, msg.author.id, message => {
-            message.content = message.content.trim();
-            return categories.indexOf(message.content.toLowerCase())>-1;
-        }, message => {
-            fortune(bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, message, message.content.toLowerCase());
+        msg.channel.createMessage("Please pick a topic from this list: `" + categories.join("`, `") + "`").then(() => {
+            bot.awaitMessage(msg.channel.id, msg.author.id, message => {
+                message.content = message.content.trim();
+                return categories.indexOf(message.content.toLowerCase())>-1;
+            }, message => {
+                fortune(bot, db, config, winston, userDocument, serverDocument, channelDocument, memberDocument, message, message.content.toLowerCase());
+            });
         });
     } else {
         unirest.get("http://yerkee.com/api/fortune/" + suffix).headers("Accept", "application/json").end(res => {

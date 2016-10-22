@@ -1,5 +1,6 @@
 const auth = require("./../Configuration/auth.json");
 const getNewServerData = require("./../Modules/NewServer.js");
+const clearStats = require("./../Modules/ClearServerStats.js");
 const setReminder = require("./../Modules/SetReminder.js");
 const setCountdown = require("./../Modules/SetCountdown.js");
 const sendStreamingRSSUpdates = require("./../Modules/StreamingRSS.js");
@@ -10,19 +11,20 @@ const postData = require("./../Modules/PostData.js");
 const startWebServer = require("./../Web/WebServer.js");
 
 module.exports = (bot, db, config, winston) => {
+	winston.info("All shards connected");
+	
 	// Ensure that all servers hava database documents
 	var guildIterator = bot.guilds.entries();
 	function checkServerData(svr, newServerDocuments, callback) {
 		db.servers.findOne({_id: svr.id}, (err, serverDocument) => {
 			if(err) {
 				winston.error("Failed to find server data", {svrid: svr.id}, err);
-				process.exit(1);
 			} else if(serverDocument) {
 				var channelIDs = svr.channels.map(a => {
 					return a.id;
 				});
 				for(var j=0; j<serverDocument.channels.length; j++) {
-					if(channelIDs.indexOf(serverDocument.channels[j].id)==-1) {
+					if(channelIDs.indexOf(serverDocument.channels[j]._id)==-1) {
 						serverDocument.channels[j].remove();
 					}
 				}
@@ -42,11 +44,10 @@ module.exports = (bot, db, config, winston) => {
 			db.servers.insertMany(newServerDocuments, (err, insertedDocuments) => {
 				if(err) {
 					winston.error("Failed to insert new server documents", err);
-					process.exit(1);
 				} else {
 					winston.info("Successfully inserted " + newServerDocuments.length + " new server documents into database");
-					pruneServerData();
 				}
+				pruneServerData();
 			});
 		} else {
 			pruneServerData();
@@ -95,6 +96,7 @@ module.exports = (bot, db, config, winston) => {
 			statsCollector();
 			setReminders();
 			setCountdowns();
+			setGiveaways();
 			startStreamingRSS();
 			checkStreamers();
 			startMessageOfTheDay();
@@ -111,7 +113,7 @@ module.exports = (bot, db, config, winston) => {
 			if(!err && serverDocument) {
 				// Clear stats for server if older than a week
 				if((Date.now() - serverDocument.stats_timestamp)>604800000) {
-					clearStats(svr, serverDocument, () => {
+					clearStats(bot, db, winston, svr, serverDocument, () => {
 						// Next server
 						try {
 				    		countServerStats(guildIterator.next().value[1], guildIterator);
@@ -126,8 +128,8 @@ module.exports = (bot, db, config, winston) => {
 					svr.members.forEach(member => {
 						if(member.id!=bot.user.id && !member.user.bot) {
 							// If member is playing game, add 1 (equal to five minutes) to game tally
-							var game = bot.getGame(member.user);
-							if(game && member.user.status=="online") {
+							var game = bot.getGame(member);
+							if(game && member.status=="online") {
 								var gameDocument = serverDocument.games.id(game);
 								if(!gameDocument) {
 									serverDocument.games.push({_id: game});
@@ -173,62 +175,6 @@ module.exports = (bot, db, config, winston) => {
 		countServerStats(guildIterator.next().value[1], guildIterator);
 	}
 
-	// Clear stats for server if older than a week
-	function clearStats(svr, serverDocument, callback) {
-		if(serverDocument.config.commands.points.isEnabled && svr.members.length>2) {
-			// Rank members by activity score for the week
-			var topMembers = [];
-	        for(var i=0; i<serverDocument.members.length; i++) {
-	            var member = svr.members.get(serverDocument.members[i]._id);
-	            if(member && member.id!=bot.user.id && !member.user.bot) {
-	            	var activityScore = Math.ceil((serverDocument.members[i].messages + serverDocument.members[i].voice) / 10);
-		            topMembers.push([member, activityScore]);
-		            serverDocument.members[i].rank_score += activityScore / 10;
-		            serverDocument.members[i].rank = bot.checkRank(winston, svr, serverDocument, member, serverDocument.members[i], true);
-		            serverDocument.members[i].messages = 0;
-		            serverDocument.members[i].voice = 0;
-	            }
-	        }
-	        topMembers.sort((a, b) => {
-	            return a[1] - b[1];
-	        });
-
-	        // Award points to top 3
-	        function awardPoints(member, amount) {
-	        	db.users.findOrCreate({_id: member.id}, (err, userDocument) => {
-	        		if(!err && userDocument) {
-		                userDocument.points += amount;
-	        		} else {
-	        			winston.error("Failed to create user data for '" + member.user.username + "' to award activity points on server '" + svr.name + "'", {usrid: member.id});
-	        		}
-	        	});
-
-	        }
-	        for(var i=topMembers.length-1; i>topMembers.length-4; i--) {
-	            if(i>=0) {
-	                awardPoints(topMembers[i][0], topMembers[i][1]);
-	            }
-	        }
-	    }
-
-	    // Reset game and message data
-	    serverDocument.games = [];
-	    serverDocument.commands = {};
-
-	    // Reset stats timestamp
-	    serverDocument.stats_timestamp = Date.now();
-
-	    // Save changes to serverDocument
-	    serverDocument.save(err => {
-	    	if(err) {
-	    		winston.error("Failed to clear stats for server '" + svr.name + "'", {svrid: svr.id});
-	    	} else {
-	    		winston.info("Cleared stats for server '" + svr.name + "'", {svrid: svr.id});
-	    	}
-	    	callback();
-	    });
-	}
-
 	// Set existing reminders to send message when they expire
 	function setReminders() {
 		db.users.find({reminders: {$not: {$size: 0}}}, (err, userDocuments) => {
@@ -237,7 +183,7 @@ module.exports = (bot, db, config, winston) => {
 			} else {
 				for(var i=0; i<userDocuments.length; i++) {
 					for(var j=0; j<userDocuments[i].reminders.length; j++) {
-						setReminder(bot, winston, userDocuments[i]._id, userDocuments[i].reminders[j]);
+						setReminder(bot, winston, userDocuments[i], userDocuments[i].reminders[j]);
 					}
 				}
 			}
@@ -251,10 +197,41 @@ module.exports = (bot, db, config, winston) => {
 				winston.error("Failed to get countdowns", err);
 			} else {
 				for(var i=0; i<serverDocuments.length; i++) {
-					for(var j=0; j<serverDocuments[i].countdown_data.length; j++) {
-						setCountdown(bot, winston, serverDocuments[i]._id, serverDocuments[i].countdown_data[j]);
+					for(var j=0; j<serverDocuments[i].config.countdown_data.length; j++) {
+						setCountdown(bot, winston, serverDocuments[i], serverDocuments[i].config.countdown_data[j]);
 					}
 				}
+			}
+		});
+	}
+
+	// Set existing giveaways to end when they expire
+	function setGiveaways() {
+		db.servers.find({
+			channels: {
+				$elemMatch: {
+					"giveaway.isOngoing": true
+				}
+			}
+		}, (err, serverDocuments) => {
+			if(err) {
+				winston.error("Failed to get giveaways", err);
+			} else {
+				serverDocuments.forEach(serverDocument => {
+					var svr = bot.guilds.get(serverDocument._id);
+					if(svr) {
+						serverDocument.channels.forEach(channelDocument => {
+							if(channelDocument.giveaway.isOngoing) {
+								var ch = svr.channels.get(channelDocument._id);
+								if(ch) {
+									setTimeout(() => {
+										bot.endGiveaway(svr, serverDocument, ch, channelDocument);
+									}, channelDocument.giveaway.expiry_timestamp - Date.now());
+								}
+							}
+						});
+					}
+				});
 			}
 		});
 	}
@@ -373,6 +350,7 @@ module.exports = (bot, db, config, winston) => {
 
 	// Print startup ASCII art in console
 	function showStartupMessage() {
+		bot.isReady = true;
 		winston.info("Started the best Discord bot, version " + config.version + "\n\
      _                                         ____        _   \n\
     / \\__      _____  ___  ___  _ __ ___   ___| __ )  ___ | |_ \n\

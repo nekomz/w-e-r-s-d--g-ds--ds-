@@ -88,14 +88,8 @@ function switchLayout(type) {
 				<select id="sort-select" onchange="window.location.href = '/activity/servers?q=<%= activeSearchQuery %>&count=<%= data.itemsPerPage %>&page=<%= data.currentPage %>&sort=' + this.value + '&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>';">
 					<option value="messages-asc">Messages Today (ascending)</option>
 					<option value="messages-des">Messages Today (descending)</option>
-					<option value="alphabetical-asc">Alphabetical (A-Z)</option>
-					<option value="alphabetical-des">Alphabetical (Z-A)</option>
-					<option value="owner-asc">Owner Name (A-Z)</option>
-					<option value="owner-des">Owner Name (Z-A)</option>
 					<option value="members-asc">Members (ascending)</option>
 					<option value="members-des">Members (descending)</option>
-					<option value="created-asc">Newest First</option>
-					<option value="created-des">Oldest First</option>
 				</select>
 			</span>
 		</div>
@@ -117,7 +111,7 @@ function switchLayout(type) {
 		</div>
 		<div class="level-item">
 			<span class="select">
-				<select id="count-select" onchange="window.location.href = '/activity/servers?q=<%= activeSearchQuery %>&count=' + this.value + '&page=<%= data.currentPage %>&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>';">
+				<select id="count-select" onchange="window.location.href = '/activity/servers?q=<%= activeSearchQuery %>&count=' + this.value + '&page=1&sort=<%= data.sortOrder %>&category=<%= data.selectedCategory %>&publiconly=<%= data.isPublicOnly %>';">
 					<option value="0">All Items</option>
 					<option value="8">8 items/page</option>
 					<option value="16">16 items/page</option>
@@ -136,60 +130,62 @@ function switchLayout(type) {
 		<div class="columns">
 			<% for(var i=0; i<data.serverData.length; i++) { %>
 				<div class="column is-one-quarter">
-					<div class="card">
-						<div class="card-image">
-							<figure class="image is-square">
-								<img src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>">
-							</figure>
-						</div>
-						<div class="card-content" style="max-height: 255px;overflow-y: scroll;">
-							<h3 class="title is-3"><%= data.serverData[i].name %></h3>
-							<h5 class="subtitle is-5"><%= data.serverData[i].category %></h5>
-							<div class="level is-mobile">
-								<div class="level-item has-text-centered">
-									<p class="heading">Members</p>
-									<p class="title"><%= data.serverData[i].members %></p>
-								</div>
-								<div class="level-item has-text-centered">
-									<p class="heading">Message<%= data.serverData[i].messages==1 ? "" : "s" %></p>
-									<p class="title"><%= data.serverData[i].messages %></p>
-								</div>
-								<div class="level-item has-text-centered">
-									<p class="heading">Created</p>
-									<p class="title" title="<%= data.serverData[i].rawCreated %>"><%= data.serverData[i].relativeCreated %>d</p>
-								</div>
+					<center>
+						<div class="card" style="text-align: left;">
+							<div class="card-image">
+								<figure class="image is-square">
+									<img src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>">
+								</figure>
 							</div>
-
-							<div class="media">
-								<div class="media-left">
-									<figure class="image is-32x32">
-										<img src="<%= data.serverData[i].owner.avatar %>" alt="<%= data.serverData[i].owner.id %>">
-									</figure>
+							<div class="card-content" style="max-height: 255px;overflow-y: scroll;">
+								<h3 class="title is-3"><%= data.serverData[i].name %></h3>
+								<h5 class="subtitle is-5"><%= data.serverData[i].category %></h5>
+								<div class="level is-mobile">
+									<div class="level-item has-text-centered">
+										<p class="heading">Members</p>
+										<p class="title"><%= data.serverData[i].members %></p>
+									</div>
+									<div class="level-item has-text-centered">
+										<p class="heading">Message<%= data.serverData[i].messages==1 ? "" : "s" %></p>
+										<p class="title"><%= data.serverData[i].messages %></p>
+									</div>
+									<div class="level-item has-text-centered">
+										<p class="heading">Created</p>
+										<p class="title" title="<%= data.serverData[i].rawCreated %>"><%= data.serverData[i].relativeCreated %>d</p>
+									</div>
 								</div>
-								<div class="media-content">
-									<p class="title is-5"><%= data.serverData[i].owner.name %></p>
-									<p class="subtitle is-6">@<%= data.serverData[i].owner.username %></p>
-								</div>
-							</div>
 
-							<div class="content">
-								<% if(data.serverData[i].description) { %>
-									<%- data.serverData[i].description %>
+								<div class="media">
+									<div class="media-left">
+										<figure class="image is-32x32">
+											<img src="<%= data.serverData[i].owner.avatar %>" alt="<%= data.serverData[i].owner.id %>">
+										</figure>
+									</div>
+									<div class="media-content">
+										<p class="title is-5"><%= data.serverData[i].owner.name %></p>
+										<p class="subtitle is-6">@<%= data.serverData[i].owner.username %></p>
+									</div>
+								</div>
+
+								<div class="content">
+									<% if(data.serverData[i].description) { %>
+										<%- data.serverData[i].description %>
+									<% } %>
+								</div>
+
+								<% if(data.serverData[i].invite_link) { %>
+									<div class="content">
+										Use <code><%= data.serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= data.serverData[i].name %>
+									</div>
 								<% } %>
 							</div>
-
 							<% if(data.serverData[i].invite_link) { %>
-								<div class="content">
-									Use <code><%= data.serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= data.serverData[i].name %>
-								</div>
+								<footer class="card-footer">
+									<a class="card-footer-item" href="<%= data.serverData[i].invite_link %>">Join Server</a>
+								</footer>
 							<% } %>
 						</div>
-						<% if(data.serverData[i].invite_link) { %>
-							<footer class="card-footer">
-								<a class="card-footer-item" href="<%= data.serverData[i].invite_link %>">Join Server</a>
-							</footer>
-						<% } %>
-					</div>
+					</center>
 				</div>
 
 				<% if(i % 4==3 && i!=data.serverData.length-1 && i!=0) { %>
@@ -219,6 +215,12 @@ function switchLayout(type) {
 								<img class="image is-24x24" src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>" style="border-radius: 100%;float:left;">
 								&nbsp;
 								<%= data.serverData[i].name %>
+								<% if(data.serverData[i].invite_link) { %>
+									&nbsp;
+									<span class="tag is-primary" title="Click to learn more">
+										Public
+									</span>
+								<% } %>
 							</td>
 							<td>
 								<%= data.serverData[i].members %>
@@ -239,7 +241,7 @@ function switchLayout(type) {
 									<div class="box">
 										<article class="media">
 											<div class="media-left">
-												<figure class="image is-128x128">
+												<figure class="image is-96x96">
 													<img src="<%= data.serverData[i].icon %>" alt="<%= data.serverData[i].id %>">
 												</figure>
 											</div>
@@ -254,7 +256,9 @@ function switchLayout(type) {
 													<% if(data.serverData[i].description) { %>
 														<%- data.serverData[i].description %>
 													<% } %>
-													Use <code><%= data.serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= data.serverData[i].name %>
+													<% if(data.serverData[i].invite_link) { %>
+														Use <code><%= data.serverData[i].command_prefix %>help</code> to learn how to use AwesomeBot on <%= data.serverData[i].name %>
+													<% } %>
 												</div>
 												<% if(data.serverData[i].invite_link) { %>
 													<a class="button is-primary" href="<%= data.serverData[i].invite_link %>">

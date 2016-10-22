@@ -1,5 +1,8 @@
 const Extension = require("./Extension.js");
 const Bot = require("./InternalBot.js");
+const Guild = require("./Guild");
+const GuildChannel = require("./GuildChannel");
+const Message = require("./Message");
 
 const auth = require("./../../Configuration/auth.json");
 const getGIF = require("./../GiphySearch.js");
@@ -51,7 +54,6 @@ module.exports = (bot, db, winston, extensionDocument, svr, serverDocument, ch, 
         },
         bot: new Bot(bot, db, winston, svr, serverDocument),
         moment: moment,
-        setTimeout: setTimeout,
         JSON: JSON,
         Math: Math,
         isNaN: isNaN,
@@ -80,12 +82,12 @@ module.exports = (bot, db, winston, extensionDocument, svr, serverDocument, ch, 
 	};
 
     if(msg && ["keyword", "command"].indexOf(extensionDocument.type)>-1) {
-        params.msg = msg;
-        params.guild = msg.guild;
-        params.channel = msg.channel;
+        params.message = new Message(msg);
+		params.guild = new Guild(msg.guild);
+		params.channel = new GuildChannel(msg.channel);
     } else {
-        params.guild = svr;
-        params.channel = ch;
+        params.guild = new Guild(svr);
+        params.channel = new GuildChannel(ch);
     }
     if(extensionDocument.type=="keyword" && keywordMatch) {
         params.keywordMatch = keywordMatch;

@@ -1,37 +1,37 @@
 const mongoose = require("mongoose");
-require("mongoose-function")(mongoose);
 const findOrCreate = require("mongoose-findorcreate");
 const serverSchema = require("./Schemas/serverSchema.js");
 const userSchema = require("./Schemas/userSchema.js");
 userSchema.plugin(findOrCreate);
 const modulesSchema = require("./Schemas/modulesSchema.js");
+modulesSchema.index({
+	name: "text",
+	description: "text"
+});
 
-var db;
-var connection;
 
 // Connect to and setup database
 module.exports = {
 	initialize: (url, callback) => {
-		connection = mongoose.createConnection(url);
-		connection.on("error", callback);
-		connection.once("open", () => {
-			if(!connection.models.servers) {
-				connection.model("servers", serverSchema);
-			}
-			if(!connection.models.users) {
-				connection.model("users", userSchema);
-			}
-			if(!connection.models.gallery) {
-				connection.model("gallery", modulesSchema);
-			}
-			db = connection.models;
-			callback();
+		mongoose.connect(url, {
+			autoReconnect: true,
+			connectTimeoutMS: 30000,
+			socketTimeoutMS: 30000,
+			keepAlive: 120,
+			poolSize: 100
 		});
+
+		mongoose.model("servers", serverSchema);
+		mongoose.model("users", userSchema);
+		mongoose.model("gallery", modulesSchema);
+
+		mongoose.connection.on("error", callback);
+		mongoose.connection.once("open", callback);
 	},
 	get: () => {
-		return db;
+		return mongoose.models;
 	},
 	getConnection: () => {
-		return connection;
+		return mongoose.connection;
 	}
 };
